@@ -22,7 +22,9 @@ export function SelectBox({ options, value, onChange, placeholder = '선택해�
 
     // Find current label
     const selectedOption = options.find(opt => opt.value === value);
-    const displayValue = isOpen ? searchTerm : (selectedOption ? selectedOption.label : '');
+    // If not open, but there's a searchTerm that doesn't match the selected value, it means the user typed something invalid that wasn't selected
+    const isInvalid = !isOpen && searchTerm && selectedOption?.label !== searchTerm;
+    const displayValue = isOpen ? searchTerm : (selectedOption ? selectedOption.label : searchTerm);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -39,10 +41,28 @@ export function SelectBox({ options, value, onChange, placeholder = '선택해�
         opt.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleSelect = (newValue: string) => {
+    const handleSelect = (newValue: string, newLabel: string) => {
         onChange(newValue);
+        setSearchTerm(newLabel);
         setIsOpen(false);
-        setSearchTerm('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isOpen) return;
+
+        if (e.key === 'Tab' || e.key === 'Enter') {
+            if (filteredOptions.length > 0) {
+                e.preventDefault();
+                handleSelect(filteredOptions[0].value, filteredOptions[0].label);
+            }
+        } else if (e.key === 'Escape') {
+            setIsOpen(false);
+            if (selectedOption) {
+                setSearchTerm(selectedOption.label);
+            } else {
+                setSearchTerm('');
+            }
+        }
     };
 
     return (
@@ -52,14 +72,18 @@ export function SelectBox({ options, value, onChange, placeholder = '선택해�
                     id={id}
                     name={name}
                     type="text"
-                    className={styles.input}
+                    className={`${styles.input} ${isInvalid ? styles.invalid : ''}`}
                     placeholder={!isOpen && !selectedOption ? placeholder : ''}
                     value={displayValue}
                     onChange={(e) => {
                         setIsOpen(true);
                         setSearchTerm(e.target.value);
                     }}
-                    onFocus={() => setIsOpen(true)}
+                    onFocus={() => {
+                        setIsOpen(true);
+                        setSearchTerm('');
+                    }}
+                    onKeyDown={handleKeyDown}
                     autoComplete="off"
                 />
                 <span className={styles.arrow}>{isOpen ? '▲' : '▼'}</span>
@@ -72,7 +96,10 @@ export function SelectBox({ options, value, onChange, placeholder = '선택해�
                             <li
                                 key={opt.value}
                                 className={`${styles.option} ${opt.value === value ? styles.selected : ''}`}
-                                onClick={() => handleSelect(opt.value)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelect(opt.value, opt.label);
+                                }}
                             >
                                 {opt.label}
                             </li>
