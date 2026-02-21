@@ -34,7 +34,7 @@ export default function MySajuHub() {
         { id: 'money', label: '재물운' },
         { id: 'love', label: '애정운' },
         { id: 'work', label: '직장운' },
-        { id: 'learn', label: '더 배우기' },
+        { id: 'learn', label: '사주 상식' },
     ];
 
     if (loading) {

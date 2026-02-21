@@ -8,8 +8,8 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.logo}>사주 허브</div>
         <nav className={styles.nav}>
-          <Link href="/me">내 사주</Link>
-          <Link href="/learn">배우기</Link>
+          <Link href="/input">내 사주 보기</Link>
+          <Link href="/learn">사주 상식</Link>
           <Link href="/explore">둘러보기</Link>
         </nav>
       </header>
@@ -30,7 +30,7 @@ export default function Home() {
               내 사주 보기
             </Link>
             <Link href="/learn" className={styles.secondaryBtn}>
-              사주 입문 10분
+              재미로 보는 사주 상식
             </Link>
             <Link href="/explore" className={styles.ghostBtn}>
               예시로 둘러보기
@@ -56,11 +56,12 @@ export default function Home() {
             </Card>
             <Card className={styles.featureCard}>
               <div className={styles.iconWrapper}>📚</div>
-              <h3 className={styles.cardTitle}>깊이있는 학습 허브</h3>
-              <p className={styles.cardDesc}>
-                내 사주를 더 똑똑하게 읽고 싶다면 다채로운 입문 가이드와 용어 사전을 활용하여 직접 해석해볼 수 있습니다.
-              </p>
-            </Card>
+              <div className={styles.featureContent}>
+                <h3 className={styles.featureTitle}>재미로 보는 사주 상식</h3>
+                <p className={styles.featureDesc}>
+                  내 사주를 재미있게 읽고 싶다면 가벼운 사주 상식과 용어 사전을 활용하여 직접 확인해볼 수 있습니다.
+                </p>
+              </div></Card>
           </div>
         </section>
       </main>

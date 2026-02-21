@@ -31,7 +31,7 @@ export default function Glossary() {
                 <Link href="/" className={styles.logo}>사주 허브</Link>
                 <nav className={styles.nav}>
                     <Link href="/me">내 사주</Link>
-                    <Link href="/learn">배우기</Link>
+                    <Link href="/learn">사주 상식</Link>
                 </nav>
             </header>
             <main className={styles.main}>

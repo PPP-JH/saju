@@ -109,7 +109,7 @@ export default function FortuneTab({ type }: FortuneTabProps) {
 
             <div className={styles.footerCta}>
                 <p className={styles.footerHint}>결과에 등장한 단어가 궁금하시다면?</p>
-                <Button variant="secondary" onClick={() => window.location.href = '/learn'}>
+                <Button variant="secondary" onClick={() => window.location.href = '/glossary'}>
                     용어사전 살펴보기
                 </Button>
             </div>

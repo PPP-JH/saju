@@ -5,10 +5,10 @@ import styles from './page.module.css';
 
 export default function LearnIndex() {
     const lessons = [
-        { id: 'intro', title: '1. 사주란 무엇인가?', desc: '사주의 기본 개념과 생년월일시의 의미를 알아봅니다.' },
-        { id: 'pillars', title: '2. 8자의 비밀, 만세력', desc: '네 개의 기둥(사주)과 여덟 개의 글자가 만들어지는 과정.' },
-        { id: 'elements', title: '3. 오행의 상생상극', desc: '목, 화, 토, 금, 수의 성질과 서로 주고받는 영향.' },
-        { id: 'ten-gods', title: '4. 사회성 읽기, 십성', desc: '비견, 식상, 재성, 관성, 인성이 의미하는 내 삶의 키워드.' },
+        { id: 'intro', title: '1. 내 사주는 왜 이럴까?', desc: '사주의 원리와 생년월일시가 숨기고 있는 재미있는 비밀들' },
+        { id: 'pillars', title: '2. 8글자의 운명 바코드', desc: '네 개의 기둥(사주)과 여덟 개의 글자가 무슨 뜻일까?' },
+        { id: 'elements', title: '3. 나무, 불, 물의 티키타카', desc: '내 사주에 물이 많으면? 오행의 상생상극 썰' },
+        { id: 'ten-gods', title: '4. 내안의 숨겨진 성격 테스트', desc: '비견, 식상, 재성... 나도 몰랐던 나의 사회적 캐릭터' },
     ];
 
     return (
@@ -22,8 +22,8 @@ export default function LearnIndex() {
             </header>
             <main className={styles.main}>
                 <div className={styles.hero}>
-                    <h1 className={styles.title}>사주 입문 코스</h1>
-                    <p className={styles.subtitle}>10분 만에 끝내는 기본 개념. 내 사주를 더 깊이 이해해보세요!</p>
+                    <h1 className={styles.title}>재미있는 사주 상식</h1>
+                    <p className={styles.subtitle}>가볍게 읽고 끄덕이는 사주 이야기. 내 사주의 비밀을 파헤쳐보세요!</p>
                 </div>
                 <div className={styles.lessonList}>
                     {lessons.map(ls => (
@@ -32,7 +32,7 @@ export default function LearnIndex() {
                                 <h2 className={styles.lessonTitle}>{ls.title}</h2>
                                 <p className={styles.lessonDesc}>{ls.desc}</p>
                             </div>
-                            <button className={styles.readBtn} onClick={() => alert('학습 페이지는 준비 중입니다.')}>학습하기</button>
+                            <button className={styles.readBtn} onClick={() => alert('조만간 재미있는 코너가 추가됩니다!')}>읽어보기</button>
                         </Card>
                     ))}
                 </div>
