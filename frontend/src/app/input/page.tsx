@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { SelectBox } from '@/components/ui/SelectBox';
 import styles from './page.module.css';
 
 export default function InputPage() {
@@ -12,7 +13,9 @@ export default function InputPage() {
     const [formData, setFormData] = useState({
         name: '',
         gender: 'M',
-        birth_date: '',
+        birth_year: '',
+        birth_month: '',
+        birth_day: '',
         birth_time: '',
         is_lunar: false,
     });
@@ -38,6 +41,43 @@ export default function InputPage() {
             [name]: type === 'checkbox' ? checked : value
         }));
     };
+
+    const handleSelectChange = (name: string, value: string) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    // Generate Options
+    const currentYear = new Date().getFullYear();
+    const yearOptions = Array.from({ length: 100 }, (_, i) => {
+        const y = (currentYear - i).toString();
+        return { value: y, label: `${y}년` };
+    });
+
+    const monthOptions = Array.from({ length: 12 }, (_, i) => {
+        const m = (i + 1).toString().padStart(2, '0');
+        return { value: m, label: `${m}월` };
+    });
+
+    const dayOptions = Array.from({ length: 31 }, (_, i) => {
+        const d = (i + 1).toString().padStart(2, '0');
+        return { value: d, label: `${d}일` };
+    });
+
+    const timeOptions = [
+        { value: '', label: '모름' },
+        { value: '00:30', label: '자시 (23:30 ~ 01:29)' },
+        { value: '02:30', label: '축시 (01:30 ~ 03:29)' },
+        { value: '04:30', label: '인시 (03:30 ~ 05:29)' },
+        { value: '06:30', label: '묘시 (05:30 ~ 07:29)' },
+        { value: '08:30', label: '진시 (07:30 ~ 09:29)' },
+        { value: '10:30', label: '사시 (09:30 ~ 11:29)' },
+        { value: '12:30', label: '오시 (11:30 ~ 13:29)' },
+        { value: '14:30', label: '미시 (13:30 ~ 15:29)' },
+        { value: '16:30', label: '신시 (15:30 ~ 17:29)' },
+        { value: '18:30', label: '유시 (17:30 ~ 19:29)' },
+        { value: '20:30', label: '술시 (19:30 ~ 21:29)' },
+        { value: '22:30', label: '해시 (21:30 ~ 23:29)' },
+    ];
 
     return (
         <div className={styles.container}>
@@ -93,17 +133,34 @@ export default function InputPage() {
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label htmlFor="birth_date" className={styles.label}>생년월일</label>
+                            <label className={styles.label}>생년월일</label>
+                            <div className={styles.dateSelectorRow}>
+                                <div className={styles.selectWrapper}>
+                                    <SelectBox
+                                        options={yearOptions}
+                                        value={formData.birth_year}
+                                        onChange={(v) => handleSelectChange('birth_year', v)}
+                                        placeholder="연도"
+                                    />
+                                </div>
+                                <div className={styles.selectWrapper}>
+                                    <SelectBox
+                                        options={monthOptions}
+                                        value={formData.birth_month}
+                                        onChange={(v) => handleSelectChange('birth_month', v)}
+                                        placeholder="월"
+                                    />
+                                </div>
+                                <div className={styles.selectWrapper}>
+                                    <SelectBox
+                                        options={dayOptions}
+                                        value={formData.birth_day}
+                                        onChange={(v) => handleSelectChange('birth_day', v)}
+                                        placeholder="일"
+                                    />
+                                </div>
+                            </div>
                             <div className={styles.dateRow}>
-                                <input
-                                    type="date"
-                                    id="birth_date"
-                                    name="birth_date"
-                                    className={styles.input}
-                                    value={formData.birth_date}
-                                    onChange={handleChange}
-                                    required
-                                />
                                 <label className={styles.checkboxLabel}>
                                     <input
                                         type="checkbox"
@@ -116,20 +173,24 @@ export default function InputPage() {
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label htmlFor="birth_time" className={styles.label}>태어난 시간 (선택)</label>
-                            <input
-                                type="time"
-                                id="birth_time"
-                                name="birth_time"
-                                className={styles.input}
+                            <label className={styles.label}>태어난 시간 (선택)</label>
+                            <SelectBox
+                                options={timeOptions}
                                 value={formData.birth_time}
-                                onChange={handleChange}
+                                onChange={(v) => handleSelectChange('birth_time', v)}
+                                placeholder="시간을 선택하거나 입력하세요"
                             />
                             <span className={styles.hint}>정확한 시간을 모를 경우 비워두셔도 됩니다 (3주 풀이로 자동 변환)</span>
                         </div>
 
                         <div className={styles.submitWrapper}>
-                            <Button type="submit" variant="primary" size="lg" className={styles.submitBtn} disabled={loading}>
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                size="lg"
+                                className={styles.submitBtn}
+                                disabled={loading || !formData.name || !formData.birth_year || !formData.birth_month || !formData.birth_day}
+                            >
                                 {loading ? '분석 중...' : '사주 결과 보기'}
                             </Button>
                         </div>
