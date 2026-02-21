@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createRead, getCurrentWeekKey, getProfile, getRead, type ProfileResponse, type ReadResult } from '@/lib/api';
 import styles from './page.module.css';
 
 import ProfileTab from './tabs/ProfileTab';
@@ -10,92 +11,179 @@ import FortuneTab from './tabs/FortuneTab';
 
 type TabId = 'profile' | 'week' | 'money' | 'love' | 'work' | 'learn';
 
+type FortuneMap = Partial<Record<'week' | 'money' | 'love' | 'work', ReadResult>>;
+
+const FEATURE_MAP: Record<'week' | 'money' | 'love' | 'work', string> = {
+  week: 'week',
+  money: 'money_week',
+  love: 'love_week',
+  work: 'work_week',
+};
+
 export default function MySajuHub() {
-    const router = useRouter();
-    const [activeTab, setActiveTab] = useState<TabId>('profile');
-    const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-    useEffect(() => {
-        // Mock loading data
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
-    }, []);
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [fortuneError, setFortuneError] = useState<string | null>(null);
+  const [fortuneLoading, setFortuneLoading] = useState(false);
 
-    const dummyProfile = {
-        summary_text: "단단한 나무처럼 흔들림 없는 형세",
-        keywords: ["주도성", "성실함", "재물운 강점"]
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [fortuneByTab, setFortuneByTab] = useState<FortuneMap>({});
+
+  const currentWeekKey = useMemo(() => getCurrentWeekKey(), []);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      setLoadingProfile(true);
+      setProfileError(null);
+
+      const queryProfileId = searchParams.get('profile_id');
+      const savedProfileId = typeof window !== 'undefined' ? localStorage.getItem('saju_profile_id') : null;
+      const profileId = queryProfileId ?? savedProfileId;
+
+      if (!profileId) {
+        setProfileError('프로필 정보가 없습니다. 입력 페이지에서 먼저 사주를 생성해주세요.');
+        setLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const data = await getProfile(profileId);
+        setProfile(data);
+        localStorage.setItem('saju_profile_id', profileId);
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : '프로필 조회에 실패했습니다.');
+      } finally {
+        setLoadingProfile(false);
+      }
     };
 
-    const tabs: { id: TabId; label: string }[] = [
-        { id: 'profile', label: '사주 풀이' },
-        { id: 'week', label: '이번 주' },
-        { id: 'money', label: '재물운' },
-        { id: 'love', label: '애정운' },
-        { id: 'work', label: '직장운' },
-        { id: 'learn', label: '사주 상식' },
-    ];
+    void loadProfile();
+  }, [searchParams]);
 
-    if (loading) {
-        return (
-            <div className={styles.loadingContainer}>
-                <div className={styles.spinner} />
-                <p className={styles.loadingText}>운명의 지도를 펼치는 중...</p>
-            </div>
-        );
-    }
+  useEffect(() => {
+    const loadFortune = async () => {
+      if (!profile) {
+        return;
+      }
+      if (!['week', 'money', 'love', 'work'].includes(activeTab)) {
+        return;
+      }
 
+      const key = activeTab as 'week' | 'money' | 'love' | 'work';
+      if (fortuneByTab[key]) {
+        return;
+      }
+
+      setFortuneLoading(true);
+      setFortuneError(null);
+
+      try {
+        const readCreated = await createRead({
+          profile_id: profile.profile_id,
+          feature_type: FEATURE_MAP[key],
+          period_key: currentWeekKey,
+        });
+        const read = await getRead(readCreated.read_id);
+
+        setFortuneByTab((prev) => ({
+          ...prev,
+          [key]: read.result_json,
+        }));
+      } catch (err) {
+        setFortuneError(err instanceof Error ? err.message : '운세를 불러오지 못했습니다.');
+      } finally {
+        setFortuneLoading(false);
+      }
+    };
+
+    void loadFortune();
+  }, [activeTab, currentWeekKey, fortuneByTab, profile]);
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'profile', label: '사주 풀이' },
+    { id: 'week', label: '이번 주' },
+    { id: 'money', label: '재물운' },
+    { id: 'love', label: '애정운' },
+    { id: 'work', label: '직장운' },
+    { id: 'learn', label: '사주 상식' },
+  ];
+
+  if (loadingProfile) {
     return (
-        <div className={styles.container}>
-            <header className={styles.header}>
-                <Link href="/" className={styles.logo}>사주 허브</Link>
-                <button onClick={() => alert('공유하기 기능은 준비 중입니다.')} className={styles.iconBtn}>
-                    공유
-                </button>
-            </header>
-
-            <main className={styles.main}>
-                {/* Summary Header */}
-                <section className={styles.summaryHeader}>
-                    <h1 className={styles.title}>{dummyProfile.summary_text}</h1>
-                    <div className={styles.keywords}>
-                        {dummyProfile.keywords.map((kw, i) => (
-                            <span key={i} className={styles.chip}>#{kw}</span>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Tabs Navigation */}
-                <nav className={styles.tabNavWrapper}>
-                    <div className={styles.tabScroll}>
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                className={`${styles.tabBtn} ${activeTab === tab.id ? styles.activeTab : ''}`}
-                                onClick={() => {
-                                    if (tab.id === 'learn') {
-                                        router.push('/learn');
-                                    } else {
-                                        setActiveTab(tab.id);
-                                    }
-                                }}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-                </nav>
-
-                {/* Tab Content */}
-                <section className={styles.tabContent}>
-                    {activeTab === 'profile' && <ProfileTab />}
-                    {['week', 'money', 'love', 'work'].includes(activeTab) && (
-                        <FortuneTab type={activeTab as 'week' | 'money' | 'love' | 'work'} />
-                    )}
-                </section>
-
-            </main>
-        </div>
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} />
+        <p className={styles.loadingText}>운명의 지도를 펼치는 중...</p>
+      </div>
     );
+  }
+
+  if (profileError || !profile) {
+    return (
+      <div className={styles.loadingContainer}>
+        <p className={styles.errorText}>{profileError ?? '프로필을 찾을 수 없습니다.'}</p>
+        <Link href="/input" className={styles.ctaLink}>사주 입력 페이지로 이동</Link>
+      </div>
+    );
+  }
+
+  const currentFortune = ['week', 'money', 'love', 'work'].includes(activeTab)
+    ? fortuneByTab[activeTab as 'week' | 'money' | 'love' | 'work']
+    : null;
+
+  return (
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <Link href="/" className={styles.logo}>사주 허브</Link>
+        <button onClick={() => alert('공유하기 기능은 준비 중입니다.')} className={styles.iconBtn}>
+          공유
+        </button>
+      </header>
+
+      <main className={styles.main}>
+        <section className={styles.summaryHeader}>
+          <h1 className={styles.title}>{profile.summary_text}</h1>
+          <div className={styles.keywords}>
+            {profile.keywords.map((kw, i) => (
+              <span key={`${kw}-${i}`} className={styles.chip}>#{kw}</span>
+            ))}
+          </div>
+        </section>
+
+        <nav className={styles.tabNavWrapper}>
+          <div className={styles.tabScroll}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`${styles.tabBtn} ${activeTab === tab.id ? styles.activeTab : ''}`}
+                onClick={() => {
+                  if (tab.id === 'learn') {
+                    router.push('/learn');
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        <section className={styles.tabContent}>
+          {activeTab === 'profile' && <ProfileTab profile={profile} />}
+          {['week', 'money', 'love', 'work'].includes(activeTab) && fortuneLoading && !currentFortune && (
+            <p className={styles.loadingInline}>운세를 불러오는 중입니다...</p>
+          )}
+          {['week', 'money', 'love', 'work'].includes(activeTab) && fortuneError && !currentFortune && (
+            <p className={styles.errorText}>{fortuneError}</p>
+          )}
+          {currentFortune && <FortuneTab data={currentFortune} />}
+        </section>
+      </main>
+    </div>
+  );
 }

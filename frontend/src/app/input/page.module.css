@@ -127,3 +127,8 @@
 .submitBtn {
     width: 100%;
 }
+
+.errorText {
+    color: #dc2626;
+    font-size: 0.875rem;
+}
