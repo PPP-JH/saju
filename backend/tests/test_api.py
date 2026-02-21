@@ -1,8 +1,25 @@
 import asyncio
+import atexit
+import os
+from pathlib import Path
 
 from httpx import ASGITransport, AsyncClient
 
+TEST_DB_PATH = Path(__file__).parent / 'test_saju.db'
+if TEST_DB_PATH.exists():
+    TEST_DB_PATH.unlink()
+os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
+
 from app.main import app
+from app.db import init_db
+
+init_db()
+
+
+@atexit.register
+def cleanup_test_db() -> None:
+    if TEST_DB_PATH.exists():
+        TEST_DB_PATH.unlink()
 
 
 async def api_request(method: str, path: str, json: dict | None = None):

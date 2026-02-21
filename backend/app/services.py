@@ -5,6 +5,11 @@ from datetime import UTC, datetime
 from threading import Lock
 from uuid import NAMESPACE_URL, uuid5
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
+from .db import SessionLocal
+from .db_models import Feedback, FortuneProfile, FortuneRead
 from .llm import narrator
 from .models import (
     Elements,
@@ -14,9 +19,6 @@ from .models import (
     ProfileCreateRequest,
     ProfileResponse,
     ReadResponse,
-    StoredFeedback,
-    StoredProfile,
-    StoredRead,
 )
 
 HEAVENLY_STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
@@ -27,13 +29,8 @@ RULES_VERSION = "v1"
 PROMPT_VERSION = "v1"
 
 
-class InMemoryStore:
+class DatabaseStore:
     def __init__(self) -> None:
-        self._profiles_by_id: dict[str, StoredProfile] = {}
-        self._profiles_by_hash: dict[str, str] = {}
-        self._reads_by_id: dict[str, StoredRead] = {}
-        self._read_ids_by_cache_key: dict[str, str] = {}
-        self._feedback_by_read_id: dict[str, list[StoredFeedback]] = {}
         self._lock = Lock()
 
     @staticmethod
@@ -119,42 +116,9 @@ class InMemoryStore:
             keywords=keywords,
         )
 
-    def create_or_get_profile(self, payload: ProfileCreateRequest) -> tuple[str, bool]:
-        input_hash = self._hash_profile_input(payload)
-        with self._lock:
-            existing_profile_id = self._profiles_by_hash.get(input_hash)
-            if existing_profile_id:
-                return existing_profile_id, True
-
-            profile_id = self._build_profile_id(input_hash)
-            computed = self._compute_profile(profile_id, payload, input_hash)
-            stored = StoredProfile(
-                profile_id=profile_id,
-                input_hash=input_hash,
-                payload=payload,
-                computed=computed,
-                created_at=datetime.now(UTC),
-            )
-            self._profiles_by_id[profile_id] = stored
-            self._profiles_by_hash[input_hash] = profile_id
-            return profile_id, False
-
-    def get_profile(self, profile_id: str) -> ProfileResponse | None:
-        with self._lock:
-            stored = self._profiles_by_id.get(profile_id)
-            return stored.computed if stored else None
-
     @staticmethod
-    def _build_cache_key(profile: StoredProfile, feature_type: str, period_key: str) -> str:
-        raw = "|".join(
-            [
-                profile.input_hash,
-                feature_type,
-                period_key,
-                RULES_VERSION,
-                PROMPT_VERSION,
-            ]
-        )
+    def _build_cache_key(input_hash: str, feature_type: str, period_key: str) -> str:
+        raw = "|".join([input_hash, feature_type, period_key, RULES_VERSION, PROMPT_VERSION])
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     @staticmethod
@@ -177,99 +141,146 @@ class InMemoryStore:
         }
         title = title_map.get(feature_type, "이번 흐름 요약")
 
-        details = [
-            {
-                "subtitle": "핵심",
-                "content": f"{profile.summary_text}. 이번 기간({period_key})에는 계획을 단순하게 유지할수록 성과가 납니다.",
-            },
-            {
-                "subtitle": "주의",
-                "content": "과도한 확장보다 이미 진행 중인 일의 완성도를 우선하세요.",
-            },
-            {
-                "subtitle": "기회",
-                "content": f"강점 키워드 {', '.join(profile.keywords[:2])}을 활용한 선택이 유리합니다.",
-            },
-        ]
-
-        actions = [
-            "주요 결정은 오전보다 오후에 점검 후 확정하세요.",
-            "이번 주 핵심 목표 1개만 남기고 나머지는 보류하세요.",
-        ]
-
         result = {
             "title": title,
             "summary": f"{feature_type} 기준 분석입니다. 동일 조건에서는 동일 결과를 제공합니다.",
             "score": score,
-            "details": details,
-            "actions": actions,
+            "details": [
+                {
+                    "subtitle": "핵심",
+                    "content": f"{profile.summary_text}. 이번 기간({period_key})에는 계획을 단순하게 유지할수록 성과가 납니다.",
+                },
+                {
+                    "subtitle": "주의",
+                    "content": "과도한 확장보다 이미 진행 중인 일의 완성도를 우선하세요.",
+                },
+                {
+                    "subtitle": "기회",
+                    "content": f"강점 키워드 {', '.join(profile.keywords[:2])}을 활용한 선택이 유리합니다.",
+                },
+            ],
+            "actions": [
+                "주요 결정은 오전보다 오후에 점검 후 확정하세요.",
+                "이번 주 핵심 목표 1개만 남기고 나머지는 보류하세요.",
+            ],
         }
         return FortuneResult.model_validate(result).model_dump()
 
+    def create_or_get_profile(self, payload: ProfileCreateRequest) -> tuple[str, bool]:
+        input_hash = self._hash_profile_input(payload)
+
+        with self._lock:
+            with SessionLocal() as db:
+                existing = db.scalar(select(FortuneProfile).where(FortuneProfile.input_hash == input_hash))
+                if existing:
+                    return existing.profile_id, True
+
+                profile_id = self._build_profile_id(input_hash)
+                computed = self._compute_profile(profile_id, payload, input_hash)
+
+                row = FortuneProfile(
+                    profile_id=profile_id,
+                    input_hash=input_hash,
+                    payload_json=payload.model_dump(),
+                    computed_json=computed.model_dump(),
+                    created_at=datetime.now(UTC),
+                )
+                db.add(row)
+                try:
+                    db.commit()
+                    return profile_id, False
+                except IntegrityError:
+                    db.rollback()
+                    existing = db.scalar(select(FortuneProfile).where(FortuneProfile.input_hash == input_hash))
+                    if not existing:
+                        raise
+                    return existing.profile_id, True
+
+    def get_profile(self, profile_id: str) -> ProfileResponse | None:
+        with SessionLocal() as db:
+            row = db.scalar(select(FortuneProfile).where(FortuneProfile.profile_id == profile_id))
+            if not row:
+                return None
+            return ProfileResponse.model_validate(row.computed_json)
+
     def create_or_get_read(self, profile_id: str, feature_type: str, period_key: str) -> tuple[str, bool]:
         with self._lock:
-            profile = self._profiles_by_id.get(profile_id)
-            if not profile:
-                raise KeyError("profile not found")
+            with SessionLocal() as db:
+                profile_row = db.scalar(select(FortuneProfile).where(FortuneProfile.profile_id == profile_id))
+                if not profile_row:
+                    raise KeyError("profile not found")
 
-            cache_key = self._build_cache_key(profile, feature_type, period_key)
-            existing_read_id = self._read_ids_by_cache_key.get(cache_key)
-            if existing_read_id:
-                return existing_read_id, True
+                cache_key = self._build_cache_key(
+                    input_hash=profile_row.input_hash,
+                    feature_type=feature_type,
+                    period_key=period_key,
+                )
+                existing = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+                if existing:
+                    return existing.read_id, True
 
-            read_id = self._build_read_id(cache_key)
-            fallback_json = self._build_result_json(
-                profile=profile.computed,
-                feature_type=feature_type,
-                period_key=period_key,
-                seed_hex=cache_key,
-            )
-            llm_json = narrator.generate_result(
-                profile=profile.computed,
-                feature_type=feature_type,
-                period_key=period_key,
-            )
-            result_json = llm_json or fallback_json
-            stored = StoredRead(
-                read_id=read_id,
-                cache_key=cache_key,
-                profile_id=profile_id,
-                feature_type=feature_type,
-                period_key=period_key,
-                result_json=result_json,
-                created_at=datetime.now(UTC),
-            )
-            self._reads_by_id[read_id] = stored
-            self._read_ids_by_cache_key[cache_key] = read_id
-            return read_id, False
+                read_id = self._build_read_id(cache_key)
+                profile = ProfileResponse.model_validate(profile_row.computed_json)
+                fallback_json = self._build_result_json(
+                    profile=profile,
+                    feature_type=feature_type,
+                    period_key=period_key,
+                    seed_hex=cache_key,
+                )
+                llm_json = narrator.generate_result(
+                    profile=profile,
+                    feature_type=feature_type,
+                    period_key=period_key,
+                )
+                result_json = llm_json or fallback_json
+
+                row = FortuneRead(
+                    read_id=read_id,
+                    cache_key=cache_key,
+                    profile_id=profile_id,
+                    feature_type=feature_type,
+                    period_key=period_key,
+                    result_json=result_json,
+                    created_at=datetime.now(UTC),
+                )
+                db.add(row)
+                try:
+                    db.commit()
+                    return read_id, False
+                except IntegrityError:
+                    db.rollback()
+                    existing = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+                    if not existing:
+                        raise
+                    return existing.read_id, True
 
     def get_read(self, read_id: str) -> ReadResponse | None:
-        with self._lock:
-            stored = self._reads_by_id.get(read_id)
-            if not stored:
+        with SessionLocal() as db:
+            row = db.scalar(select(FortuneRead).where(FortuneRead.read_id == read_id))
+            if not row:
                 return None
             return ReadResponse(
-                read_id=stored.read_id,
-                feature_type=stored.feature_type,
-                period_key=stored.period_key,
-                result_json=stored.result_json,
+                read_id=row.read_id,
+                feature_type=row.feature_type,
+                period_key=row.period_key,
+                result_json=row.result_json,
             )
 
     def add_feedback(self, payload: FeedbackCreateRequest) -> None:
-        with self._lock:
-            if payload.read_id not in self._reads_by_id:
+        with SessionLocal() as db:
+            read = db.scalar(select(FortuneRead).where(FortuneRead.read_id == payload.read_id))
+            if not read:
                 raise KeyError("read not found")
 
-            bucket = self._feedback_by_read_id.setdefault(payload.read_id, [])
-            bucket.append(
-                StoredFeedback(
-                    read_id=payload.read_id,
-                    rating=payload.rating,
-                    comment=payload.comment,
-                    flag_inaccurate=payload.flag_inaccurate,
-                    created_at=datetime.now(UTC),
-                )
+            row = Feedback(
+                read_id=payload.read_id,
+                rating=payload.rating,
+                comment=payload.comment,
+                flag_inaccurate=payload.flag_inaccurate,
+                created_at=datetime.now(UTC),
             )
+            db.add(row)
+            db.commit()
 
 
-store = InMemoryStore()
+store = DatabaseStore()
