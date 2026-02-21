@@ -1,0 +1,136 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card-hover);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+}
+
+.logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.nav {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.nav a:hover {
+    color: var(--primary);
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4rem 1rem;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 3rem;
+    max-width: 600px;
+}
+
+.title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+.subtitle {
+    font-size: 1.125rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.lessonList {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.lessonCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2rem;
+    background: var(--background);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.lessonCard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.lessonContent {
+    flex: 1;
+    padding-right: 2rem;
+}
+
+.lessonTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--foreground);
+}
+
+.lessonDesc {
+    font-size: 1rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.readBtn {
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-card-hover);
+    color: var(--foreground);
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.readBtn:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.bottomLink {
+    margin-top: 4rem;
+    font-size: 1rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+    background: var(--background);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 700px;
+}
+
+.linkText {
+    color: var(--primary);
+    font-weight: 700;
+    margin-left: 0.5rem;
+}
+
+.linkText:hover {
+    text-decoration: underline;
+}

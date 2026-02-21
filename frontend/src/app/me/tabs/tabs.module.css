@@ -1,0 +1,289 @@
+.tabContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+}
+
+.sectionHeader {
+    margin-bottom: 1rem;
+}
+
+.sectionTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.sectionSubTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.sectionDesc {
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Profile Tab specific */
+.card {
+    padding: 1.5rem;
+}
+
+.pillarsGrid {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    gap: 1rem;
+}
+
+.pillarCol {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-card-hover);
+    position: relative;
+}
+
+.pillarCol.isMe {
+    background: rgba(79, 70, 229, 0.05);
+    /* primary slightly transparent */
+    border: 1px solid var(--primary);
+}
+
+.pillarName {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.pillarCharTop,
+.pillarCharBottom {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--foreground);
+}
+
+.pillarCharTop {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.meLabel {
+    position: absolute;
+    top: -10px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.elementsRow {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1.5rem;
+}
+
+.elementItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.elementCircle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    background: var(--background);
+}
+
+.elementValue {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.interpretation {
+    padding: 1rem;
+    background: var(--bg-card-hover);
+    border-radius: var(--radius-sm);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+
+.godsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.godCard {
+    padding: 1.25rem;
+}
+
+.godHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.godTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--bg-card-hover);
+    color: var(--text-muted);
+}
+
+.badgeStrong {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.godDesc {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+}
+
+/* Fortune Tab specific */
+.scoreCard {
+    padding: 2rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+}
+
+.scoreHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.scoreValue {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.scoreValue span {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.scoreTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.summaryText {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: var(--foreground);
+}
+
+.detailsList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detailCard {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.detailIcon {
+    font-size: 1.5rem;
+}
+
+.detailSubTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.detailText {
+    line-height: 1.6;
+    color: var(--text-muted);
+}
+
+.actionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--bg-card);
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+}
+
+.actionItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 1rem;
+    color: var(--foreground);
+    line-height: 1.5;
+}
+
+.checkIcon {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.footerCta {
+    margin-top: 2rem;
+    text-align: center;
+    padding: 2rem;
+    background: var(--bg-card-hover);
+    border-radius: var(--radius-lg);
+}
+
+.footerHint {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
