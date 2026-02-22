@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from .models import FortuneResult, ProfileResponse
 
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.0-flash"
 logger = logging.getLogger(__name__)
 
 
