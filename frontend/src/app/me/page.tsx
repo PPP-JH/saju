@@ -3,7 +3,16 @@
 import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createRead, getCurrentWeekKey, getProfile, getRead, type ProfileResponse, type ReadResult } from '@/lib/api';
+import {
+  createRead,
+  getCurrentWeekKey,
+  getProfile,
+  getRead,
+  streamRead,
+  type ProfileResponse,
+  type ReadResult,
+  type StreamDonePayload,
+} from '@/lib/api';
 import styles from './page.module.css';
 
 import ProfileTab from './tabs/ProfileTab';
@@ -29,6 +38,10 @@ function MySajuHub() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [fortuneError, setFortuneError] = useState<string | null>(null);
   const [fortuneLoading, setFortuneLoading] = useState(false);
+  const [profileStreamText, setProfileStreamText] = useState('');
+  const [profileStreamLoading, setProfileStreamLoading] = useState(false);
+  const [profileStreamError, setProfileStreamError] = useState<string | null>(null);
+  const [profileStreamResult, setProfileStreamResult] = useState<StreamDonePayload | null>(null);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [fortuneByTab, setFortuneByTab] = useState<FortuneMap>({});
@@ -63,6 +76,53 @@ function MySajuHub() {
 
     void loadProfile();
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!profile || activeTab !== 'profile' || profileStreamResult || profileStreamLoading) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setProfileStreamText('');
+    setProfileStreamError(null);
+    setProfileStreamLoading(true);
+
+    void streamRead(
+      {
+        profile_id: profile.profile_id,
+        feature_type: 'profile_detail',
+        period_key: currentWeekKey,
+      },
+      {
+        onDelta: (text) => {
+          setProfileStreamText((prev) => prev + text);
+        },
+        onDone: (donePayload) => {
+          setProfileStreamResult(donePayload);
+          setProfileStreamLoading(false);
+        },
+        onError: (message) => {
+          setProfileStreamError(message);
+        },
+      },
+      controller.signal,
+    )
+      .catch((err) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setProfileStreamError(err instanceof Error ? err.message : '스트리밍 호출에 실패했습니다.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setProfileStreamLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeTab, currentWeekKey, profile, profileStreamLoading, profileStreamResult]);
 
   useEffect(() => {
     const loadFortune = async () => {
@@ -174,7 +234,15 @@ function MySajuHub() {
         </nav>
 
         <section className={styles.tabContent}>
-          {activeTab === 'profile' && <ProfileTab profile={profile} />}
+          {activeTab === 'profile' && (
+            <ProfileTab
+              profile={profile}
+              streamText={profileStreamText}
+              streamLoading={profileStreamLoading}
+              streamError={profileStreamError}
+              streamResult={profileStreamResult?.result_json ?? null}
+            />
+          )}
           {['week', 'money', 'love', 'work'].includes(activeTab) && fortuneLoading && !currentFortune && (
             <p className={styles.loadingInline}>운세를 불러오는 중입니다...</p>
           )}

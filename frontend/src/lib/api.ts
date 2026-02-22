@@ -33,6 +33,14 @@ export type ReadResponse = {
   result_json: ReadResult;
 };
 
+export type StreamDonePayload = {
+  read_id: string;
+  cached: boolean;
+  feature_type: string;
+  period_key: string;
+  result_json: ReadResult;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -91,6 +99,96 @@ export async function createRead(payload: {
 
 export async function getRead(readId: string): Promise<ReadResponse> {
   return apiFetch<ReadResponse>(`/api/read/${readId}`);
+}
+
+export async function streamRead(
+  payload: {
+    profile_id: string;
+    feature_type: string;
+    period_key: string;
+  },
+  handlers: {
+    onDelta?: (text: string) => void;
+    onDone: (payload: StreamDonePayload) => void;
+    onError?: (message: string) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/read/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal,
+    cache: 'no-store',
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`스트리밍 요청 실패 (${response.status})`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  const emitEvent = (chunk: string) => {
+    const lines = chunk.split('\n');
+    let eventName = 'message';
+    let dataText = '';
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataText += line.slice(5).trim();
+      }
+    }
+
+    if (!dataText) {
+      return;
+    }
+
+    try {
+      const payloadData = JSON.parse(dataText) as Record<string, unknown>;
+      if (eventName === 'delta' && typeof payloadData.text === 'string') {
+        handlers.onDelta?.(payloadData.text);
+        return;
+      }
+      if (eventName === 'done') {
+        handlers.onDone(payloadData as StreamDonePayload);
+        return;
+      }
+      if (eventName === 'error') {
+        const detail = typeof payloadData.detail === 'string' ? payloadData.detail : '스트리밍 오류';
+        handlers.onError?.(detail);
+      }
+    } catch {
+      handlers.onError?.('스트리밍 응답 파싱 실패');
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+
+    while (true) {
+      const separatorIndex = buffer.indexOf('\n\n');
+      if (separatorIndex === -1) {
+        break;
+      }
+      const eventChunk = buffer.slice(0, separatorIndex);
+      buffer = buffer.slice(separatorIndex + 2);
+      emitEvent(eventChunk);
+    }
+  }
+
+  if (buffer.trim()) {
+    emitEvent(buffer);
+  }
 }
 
 export function getCurrentWeekKey(now: Date = new Date()): string {

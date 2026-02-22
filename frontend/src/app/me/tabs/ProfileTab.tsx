@@ -1,11 +1,15 @@
 import React from 'react';
 import { Card } from '@/components/ui/Card';
 import { Tooltip } from '@/components/ui/Tooltip';
-import type { ProfileResponse } from '@/lib/api';
+import type { ProfileResponse, ReadResult } from '@/lib/api';
 import styles from './tabs.module.css';
 
 type ProfileTabProps = {
   profile: ProfileResponse;
+  streamText: string;
+  streamLoading: boolean;
+  streamError: string | null;
+  streamResult: ReadResult | null;
 };
 
 const GOD_LABEL_MAP: Record<string, string> = {
@@ -16,7 +20,13 @@ const GOD_LABEL_MAP: Record<string, string> = {
   인성: '학습력과 내면 안정',
 };
 
-export default function ProfileTab({ profile }: ProfileTabProps) {
+export default function ProfileTab({
+  profile,
+  streamText,
+  streamLoading,
+  streamError,
+  streamResult,
+}: ProfileTabProps) {
   const pillars = [
     { name: '시주', top: profile.pillars.time[0], bottom: profile.pillars.time[1] },
     { name: '일주', top: profile.pillars.day[0], bottom: profile.pillars.day[1], isMe: true },
@@ -105,6 +115,34 @@ export default function ProfileTab({ profile }: ProfileTabProps) {
           </Card>
         ))}
       </div>
+
+      <div className={styles.divider} />
+
+      <header className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle}>실시간 사주 풀이</h2>
+        <p className={styles.sectionDesc}>
+          해석 문장이 생성되는 흐름을 실시간으로 확인할 수 있습니다.
+        </p>
+      </header>
+
+      <Card className={styles.llmStreamCard}>
+        {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
+        {!streamError && !streamText && streamLoading && (
+          <p className={styles.streamHintText}>문장을 생성 중입니다...</p>
+        )}
+        {!!streamText && (
+          <p className={styles.streamingText}>
+            {streamText}
+            {streamLoading && <span className={styles.cursor} />}
+          </p>
+        )}
+        {streamResult && (
+          <div className={styles.streamDoneBlock}>
+            <h3 className={styles.streamDoneTitle}>{streamResult.title}</h3>
+            <p className={styles.streamDoneSummary}>{streamResult.summary}</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
