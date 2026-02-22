@@ -4,10 +4,8 @@ import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  createRead,
   getCurrentWeekKey,
   getProfile,
-  getRead,
   streamRead,
   type ProfileResponse,
   type ReadResult,
@@ -19,10 +17,14 @@ import ProfileTab from './tabs/ProfileTab';
 import FortuneTab from './tabs/FortuneTab';
 
 type TabId = 'profile' | 'week' | 'money' | 'love' | 'work' | 'learn';
+type FortuneTabId = 'week' | 'money' | 'love' | 'work';
 
-type FortuneMap = Partial<Record<'week' | 'money' | 'love' | 'work', ReadResult>>;
+type FortuneMap = Partial<Record<FortuneTabId, ReadResult>>;
+type FortuneStreamTextMap = Partial<Record<FortuneTabId, string>>;
+type FortuneStreamLoadingMap = Partial<Record<FortuneTabId, boolean>>;
+type FortuneStreamErrorMap = Partial<Record<FortuneTabId, string | null>>;
 
-const FEATURE_MAP: Record<'week' | 'money' | 'love' | 'work', string> = {
+const FEATURE_MAP: Record<FortuneTabId, string> = {
   week: 'week',
   money: 'money_week',
   love: 'love_week',
@@ -36,8 +38,6 @@ function MySajuHub() {
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [fortuneError, setFortuneError] = useState<string | null>(null);
-  const [fortuneLoading, setFortuneLoading] = useState(false);
   const [profileStreamText, setProfileStreamText] = useState('');
   const [profileStreamLoading, setProfileStreamLoading] = useState(false);
   const [profileStreamError, setProfileStreamError] = useState<string | null>(null);
@@ -45,6 +45,9 @@ function MySajuHub() {
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [fortuneByTab, setFortuneByTab] = useState<FortuneMap>({});
+  const [fortuneStreamTextByTab, setFortuneStreamTextByTab] = useState<FortuneStreamTextMap>({});
+  const [fortuneStreamLoadingByTab, setFortuneStreamLoadingByTab] = useState<FortuneStreamLoadingMap>({});
+  const [fortuneStreamErrorByTab, setFortuneStreamErrorByTab] = useState<FortuneStreamErrorMap>({});
 
   const currentWeekKey = useMemo(() => getCurrentWeekKey(), []);
 
@@ -125,43 +128,64 @@ function MySajuHub() {
   }, [activeTab, currentWeekKey, profile, profileStreamLoading, profileStreamResult]);
 
   useEffect(() => {
-    const loadFortune = async () => {
-      if (!profile) {
-        return;
-      }
-      if (!['week', 'money', 'love', 'work'].includes(activeTab)) {
-        return;
-      }
+    if (!profile || !['week', 'money', 'love', 'work'].includes(activeTab)) {
+      return;
+    }
 
-      const key = activeTab as 'week' | 'money' | 'love' | 'work';
-      if (fortuneByTab[key]) {
-        return;
-      }
+    const key = activeTab as FortuneTabId;
+    if (fortuneByTab[key] || fortuneStreamLoadingByTab[key]) {
+      return;
+    }
 
-      setFortuneLoading(true);
-      setFortuneError(null);
+    const controller = new AbortController();
+    setFortuneStreamTextByTab((prev) => ({ ...prev, [key]: '' }));
+    setFortuneStreamErrorByTab((prev) => ({ ...prev, [key]: null }));
+    setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: true }));
 
-      try {
-        const readCreated = await createRead({
-          profile_id: profile.profile_id,
-          feature_type: FEATURE_MAP[key],
-          period_key: currentWeekKey,
-        });
-        const read = await getRead(readCreated.read_id);
+    void streamRead(
+      {
+        profile_id: profile.profile_id,
+        feature_type: FEATURE_MAP[key],
+        period_key: currentWeekKey,
+      },
+      {
+        onDelta: (text) => {
+          setFortuneStreamTextByTab((prev) => ({
+            ...prev,
+            [key]: (prev[key] ?? '') + text,
+          }));
+        },
+        onDone: (payload) => {
+          setFortuneByTab((prev) => ({
+            ...prev,
+            [key]: payload.result_json,
+          }));
+          setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
+        },
+        onError: (message) => {
+          setFortuneStreamErrorByTab((prev) => ({ ...prev, [key]: message }));
+        },
+      },
+      controller.signal,
+    )
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setFortuneStreamErrorByTab((prev) => ({
+            ...prev,
+            [key]: err instanceof Error ? err.message : '운세를 불러오지 못했습니다.',
+          }));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
+        }
+      });
 
-        setFortuneByTab((prev) => ({
-          ...prev,
-          [key]: read.result_json,
-        }));
-      } catch (err) {
-        setFortuneError(err instanceof Error ? err.message : '운세를 불러오지 못했습니다.');
-      } finally {
-        setFortuneLoading(false);
-      }
+    return () => {
+      controller.abort();
     };
-
-    void loadFortune();
-  }, [activeTab, currentWeekKey, fortuneByTab, profile]);
+  }, [activeTab, currentWeekKey, fortuneByTab, fortuneStreamLoadingByTab, profile]);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'profile', label: '사주 풀이' },
@@ -191,7 +215,7 @@ function MySajuHub() {
   }
 
   const currentFortune = ['week', 'money', 'love', 'work'].includes(activeTab)
-    ? fortuneByTab[activeTab as 'week' | 'money' | 'love' | 'work']
+    ? fortuneByTab[activeTab as FortuneTabId]
     : null;
 
   return (
@@ -243,13 +267,14 @@ function MySajuHub() {
               streamResult={profileStreamResult?.result_json ?? null}
             />
           )}
-          {['week', 'money', 'love', 'work'].includes(activeTab) && fortuneLoading && !currentFortune && (
-            <p className={styles.loadingInline}>운세를 불러오는 중입니다...</p>
+          {['week', 'money', 'love', 'work'].includes(activeTab) && (
+            <FortuneTab
+              data={currentFortune ?? null}
+              streamText={fortuneStreamTextByTab[activeTab as FortuneTabId] ?? ''}
+              streamLoading={fortuneStreamLoadingByTab[activeTab as FortuneTabId] ?? false}
+              streamError={fortuneStreamErrorByTab[activeTab as FortuneTabId] ?? null}
+            />
           )}
-          {['week', 'money', 'love', 'work'].includes(activeTab) && fortuneError && !currentFortune && (
-            <p className={styles.errorText}>{fortuneError}</p>
-          )}
-          {currentFortune && <FortuneTab data={currentFortune} />}
         </section>
       </main>
     </div>
