@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -10,6 +11,7 @@ from pydantic import ValidationError
 from .models import FortuneResult, ProfileResponse
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_STREAM_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 
 
@@ -27,7 +29,6 @@ class GeminiNarrator:
     def _extract_json_text(raw_text: str) -> str:
         text = raw_text.strip()
         if text.startswith("```"):
-            # Remove markdown fence if the model wraps JSON in code block.
             parts = text.split("```")
             for part in parts:
                 candidate = part.strip()
@@ -61,11 +62,8 @@ class GeminiNarrator:
             f"output_schema: {json.dumps(schema_hint, ensure_ascii=False)}"
         )
 
-    def generate_result(self, profile: ProfileResponse, feature_type: str, period_key: str) -> dict[str, Any] | None:
-        if not self.enabled:
-            return None
-
-        request_payload = {
+    def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str) -> dict[str, Any]:
+        return {
             "contents": [{"parts": [{"text": self._prompt(profile, feature_type, period_key)}]}],
             "generationConfig": {
                 "temperature": 0.4,
@@ -75,30 +73,85 @@ class GeminiNarrator:
             },
         }
 
+    def parse_result_text(self, raw_text: str) -> dict[str, Any] | None:
+        try:
+            parsed = json.loads(self._extract_json_text(raw_text))
+            validated = FortuneResult.model_validate(parsed)
+            return validated.model_dump()
+        except (json.JSONDecodeError, ValidationError, TypeError):
+            return None
+
+    def generate_result(self, profile: ProfileResponse, feature_type: str, period_key: str) -> dict[str, Any] | None:
+        if not self.enabled:
+            return None
+
         url = GEMINI_API_URL.format(model=self.model)
         params = {"key": self.api_key}
+        payload = self._request_payload(profile, feature_type, period_key)
 
         for _ in range(2):
             try:
                 with httpx.Client(timeout=self.timeout_seconds) as client:
-                    response = client.post(url, params=params, json=request_payload)
+                    response = client.post(url, params=params, json=payload)
                     response.raise_for_status()
                 data = response.json()
                 text = data["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(self._extract_json_text(text))
-                validated = FortuneResult.model_validate(parsed)
-                return validated.model_dump()
-            except (
-                httpx.HTTPError,
-                KeyError,
-                IndexError,
-                json.JSONDecodeError,
-                ValidationError,
-                TypeError,
-            ):
+                validated = self.parse_result_text(text)
+                if validated is not None:
+                    return validated
+            except (httpx.HTTPError, KeyError, IndexError, TypeError):
                 continue
 
         return None
+
+    async def stream_result_text(
+        self,
+        profile: ProfileResponse,
+        feature_type: str,
+        period_key: str,
+    ) -> AsyncIterator[str]:
+        if not self.enabled:
+            return
+
+        url = GEMINI_STREAM_API_URL.format(model=self.model)
+        params = {"key": self.api_key, "alt": "sse"}
+        payload = self._request_payload(profile, feature_type, period_key)
+        prior_text = ""
+
+        timeout = httpx.Timeout(self.timeout_seconds, read=self.timeout_seconds)
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                async with client.stream("POST", url, params=params, json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+
+                        data_text = line[len("data:") :].strip()
+                        if data_text == "[DONE]":
+                            break
+
+                        try:
+                            event = json.loads(data_text)
+                            current_text = event["candidates"][0]["content"]["parts"][0]["text"]
+                        except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                            continue
+
+                        if not current_text:
+                            continue
+
+                        if current_text.startswith(prior_text):
+                            delta = current_text[len(prior_text) :]
+                            prior_text = current_text
+                        else:
+                            delta = current_text
+                            prior_text += current_text
+
+                        if delta:
+                            yield delta
+        except httpx.HTTPError:
+            return
 
 
 narrator = GeminiNarrator()

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from .db import init_db
+from .llm import narrator
 from .models import (
     FeedbackCreateRequest,
     FeedbackResponse,
@@ -39,6 +43,9 @@ app.add_middleware(
 )
 
 
+def _to_sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
@@ -71,6 +78,82 @@ async def create_read(payload: ReadCreateRequest) -> ReadCreateResponse:
         raise HTTPException(status_code=404, detail="profile not found") from None
 
     return ReadCreateResponse(read_id=read_id, cached=cached)
+
+
+@app.post("/api/read/stream")
+async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
+    bundle = store.get_profile_bundle(payload.profile_id)
+    if bundle is None:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    profile, input_hash = bundle
+    cached_read = store.get_cached_read(
+        input_hash=input_hash,
+        feature_type=payload.feature_type,
+        period_key=payload.period_key,
+    )
+
+    fallback_json = store.build_fallback_result(
+        profile=profile,
+        feature_type=payload.feature_type,
+        period_key=payload.period_key,
+        input_hash=input_hash,
+    )
+
+    async def stream_events() -> AsyncIterator[str]:
+        if cached_read is not None:
+            yield _to_sse(
+                event="done",
+                data={
+                    "read_id": cached_read.read_id,
+                    "cached": True,
+                    "feature_type": cached_read.feature_type,
+                    "period_key": cached_read.period_key,
+                    "result_json": cached_read.result_json,
+                },
+            )
+            return
+
+        raw_text = ""
+        try:
+            async for delta in narrator.stream_result_text(
+                profile=profile,
+                feature_type=payload.feature_type,
+                period_key=payload.period_key,
+            ):
+                raw_text += delta
+                yield _to_sse(event="delta", data={"text": delta})
+        except Exception:
+            raw_text = ""
+
+        parsed = narrator.parse_result_text(raw_text) if raw_text else None
+        final_result = parsed or fallback_json
+
+        try:
+            read_id, cached = store.create_or_get_read_from_result(
+                profile_id=payload.profile_id,
+                feature_type=payload.feature_type,
+                period_key=payload.period_key,
+                result_json=final_result,
+            )
+        except KeyError:
+            yield _to_sse(event="error", data={"detail": "profile not found"})
+            return
+
+        persisted = store.get_read(read_id)
+        result_json = persisted.result_json if persisted else final_result
+        yield _to_sse(
+            event="done",
+            data={
+                "read_id": read_id,
+                "cached": cached,
+                "feature_type": payload.feature_type,
+                "period_key": payload.period_key,
+                "result_json": result_json,
+            },
+        )
+
+    return StreamingResponse(stream_events(), media_type="text/event-stream")
 
 
 @app.get("/api/read/{read_id}", response_model=ReadResponse)

@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import json
 import os
 from pathlib import Path
 
@@ -30,6 +31,37 @@ async def api_request(method: str, path: str, json: dict | None = None):
 
 def request(method: str, path: str, json: dict | None = None):
     return asyncio.run(api_request(method=method, path=path, json=json))
+
+
+async def api_stream_request(path: str, json_body: dict):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url='http://testserver') as client:
+        async with client.stream('POST', path, json=json_body) as response:
+            chunks: list[str] = []
+            async for chunk in response.aiter_text():
+                chunks.append(chunk)
+            return response.status_code, ''.join(chunks)
+
+
+def stream_request(path: str, json_body: dict):
+    return asyncio.run(api_stream_request(path=path, json_body=json_body))
+
+
+def parse_sse_events(stream_text: str) -> list[tuple[str, dict]]:
+    events: list[tuple[str, dict]] = []
+    for block in stream_text.strip().split('\n\n'):
+        if not block.strip():
+            continue
+        event_name = 'message'
+        data_text = ''
+        for line in block.splitlines():
+            if line.startswith('event:'):
+                event_name = line.split(':', 1)[1].strip()
+            elif line.startswith('data:'):
+                data_text += line.split(':', 1)[1].strip()
+        payload = json.loads(data_text) if data_text else {}
+        events.append((event_name, payload))
+    return events
 
 
 def test_healthz() -> None:
@@ -242,3 +274,97 @@ def test_read_fallback_when_llm_returns_none(monkeypatch) -> None:
     body = request('GET', f'/api/read/{read_id}').json()
     assert body['result_json']['title'] != 'LLM 생성 결과'
     assert 'score' in body['result_json']
+
+
+def test_read_stream_emits_delta_and_done(monkeypatch) -> None:
+    profile_resp = request(
+        'POST',
+        '/api/profile',
+        json={
+            'name': '스트리밍사용자',
+            'gender': 'F',
+            'birth_date': '1991-01-11',
+            'birth_time': '10:30',
+            'is_lunar': False,
+        },
+    )
+    profile_id = profile_resp.json()['profile_id']
+
+    full_json = (
+        '{"title":"실시간 리딩","summary":"스트림 생성 결과","score":81,'
+        '"details":[{"subtitle":"핵심","content":"실시간 설명"}],'
+        '"actions":["행동 가이드"]}'
+    )
+
+    async def fake_stream_result_text(**_):
+        yield full_json[:40]
+        yield full_json[40:90]
+        yield full_json[90:]
+
+    monkeypatch.setattr('app.main.narrator.stream_result_text', fake_stream_result_text)
+
+    status_code, stream_text = stream_request(
+        '/api/read/stream',
+        {
+            'profile_id': profile_id,
+            'feature_type': 'profile_detail',
+            'period_key': '2026-W12',
+        },
+    )
+
+    assert status_code == 200
+    events = parse_sse_events(stream_text)
+    assert any(name == 'delta' for name, _ in events)
+    done_events = [payload for name, payload in events if name == 'done']
+    assert len(done_events) == 1
+    done = done_events[0]
+    assert done['cached'] is False
+    assert done['result_json']['title'] == '실시간 리딩'
+
+    read_id = done['read_id']
+    persisted = request('GET', f'/api/read/{read_id}')
+    assert persisted.status_code == 200
+    assert persisted.json()['result_json']['title'] == '실시간 리딩'
+
+
+def test_read_stream_returns_cached_done() -> None:
+    profile_resp = request(
+        'POST',
+        '/api/profile',
+        json={
+            'name': '캐시스트림',
+            'gender': 'M',
+            'birth_date': '1993-05-05',
+            'birth_time': None,
+            'is_lunar': False,
+        },
+    )
+    profile_id = profile_resp.json()['profile_id']
+
+    read_resp = request(
+        'POST',
+        '/api/read',
+        json={
+            'profile_id': profile_id,
+            'feature_type': 'week',
+            'period_key': '2026-W15',
+        },
+    )
+    read_id = read_resp.json()['read_id']
+
+    status_code, stream_text = stream_request(
+        '/api/read/stream',
+        {
+            'profile_id': profile_id,
+            'feature_type': 'week',
+            'period_key': '2026-W15',
+        },
+    )
+
+    assert status_code == 200
+    events = parse_sse_events(stream_text)
+    assert len(events) == 1
+    event_name, payload = events[0]
+    assert event_name == 'done'
+    assert payload['cached'] is True
+    assert payload['read_id'] == read_id

@@ -79,9 +79,7 @@ class DatabaseStore:
         )
 
         levels = ["약함", "보통", "강함"]
-        ten_gods_summary = {
-            key: levels[(seed >> idx) % len(levels)] for idx, key in enumerate(TEN_GOD_KEYS)
-        }
+        ten_gods_summary = {key: levels[(seed >> idx) % len(levels)] for idx, key in enumerate(TEN_GOD_KEYS)}
 
         dominant = max(
             {
@@ -166,6 +164,19 @@ class DatabaseStore:
         }
         return FortuneResult.model_validate(result).model_dump()
 
+    def build_fallback_result(self, profile: ProfileResponse, feature_type: str, period_key: str, input_hash: str) -> dict:
+        cache_key = self._build_cache_key(
+            input_hash=input_hash,
+            feature_type=feature_type,
+            period_key=period_key,
+        )
+        return self._build_result_json(
+            profile=profile,
+            feature_type=feature_type,
+            period_key=period_key,
+            seed_hex=cache_key,
+        )
+
     def create_or_get_profile(self, payload: ProfileCreateRequest) -> tuple[str, bool]:
         input_hash = self._hash_profile_input(payload)
 
@@ -203,7 +214,37 @@ class DatabaseStore:
                 return None
             return ProfileResponse.model_validate(row.computed_json)
 
-    def create_or_get_read(self, profile_id: str, feature_type: str, period_key: str) -> tuple[str, bool]:
+    def get_profile_bundle(self, profile_id: str) -> tuple[ProfileResponse, str] | None:
+        with SessionLocal() as db:
+            row = db.scalar(select(FortuneProfile).where(FortuneProfile.profile_id == profile_id))
+            if not row:
+                return None
+            return ProfileResponse.model_validate(row.computed_json), row.input_hash
+
+    def get_cached_read(self, input_hash: str, feature_type: str, period_key: str) -> ReadResponse | None:
+        cache_key = self._build_cache_key(
+            input_hash=input_hash,
+            feature_type=feature_type,
+            period_key=period_key,
+        )
+        with SessionLocal() as db:
+            row = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+            if not row:
+                return None
+            return ReadResponse(
+                read_id=row.read_id,
+                feature_type=row.feature_type,
+                period_key=row.period_key,
+                result_json=row.result_json,
+            )
+
+    def create_or_get_read_from_result(
+        self,
+        profile_id: str,
+        feature_type: str,
+        period_key: str,
+        result_json: dict,
+    ) -> tuple[str, bool]:
         with self._lock:
             with SessionLocal() as db:
                 profile_row = db.scalar(select(FortuneProfile).where(FortuneProfile.profile_id == profile_id))
@@ -220,27 +261,14 @@ class DatabaseStore:
                     return existing.read_id, True
 
                 read_id = self._build_read_id(cache_key)
-                profile = ProfileResponse.model_validate(profile_row.computed_json)
-                fallback_json = self._build_result_json(
-                    profile=profile,
-                    feature_type=feature_type,
-                    period_key=period_key,
-                    seed_hex=cache_key,
-                )
-                llm_json = narrator.generate_result(
-                    profile=profile,
-                    feature_type=feature_type,
-                    period_key=period_key,
-                )
-                result_json = llm_json or fallback_json
-
+                validated = FortuneResult.model_validate(result_json).model_dump()
                 row = FortuneRead(
                     read_id=read_id,
                     cache_key=cache_key,
                     profile_id=profile_id,
                     feature_type=feature_type,
                     period_key=period_key,
-                    result_json=result_json,
+                    result_json=validated,
                     created_at=datetime.now(UTC),
                 )
                 db.add(row)
@@ -253,6 +281,35 @@ class DatabaseStore:
                     if not existing:
                         raise
                     return existing.read_id, True
+
+    def create_or_get_read(self, profile_id: str, feature_type: str, period_key: str) -> tuple[str, bool]:
+        bundle = self.get_profile_bundle(profile_id)
+        if not bundle:
+            raise KeyError("profile not found")
+
+        profile, input_hash = bundle
+        cached = self.get_cached_read(input_hash=input_hash, feature_type=feature_type, period_key=period_key)
+        if cached:
+            return cached.read_id, True
+
+        fallback_json = self.build_fallback_result(
+            profile=profile,
+            feature_type=feature_type,
+            period_key=period_key,
+            input_hash=input_hash,
+        )
+        llm_json = narrator.generate_result(
+            profile=profile,
+            feature_type=feature_type,
+            period_key=period_key,
+        )
+        read_id, cached_after = self.create_or_get_read_from_result(
+            profile_id=profile_id,
+            feature_type=feature_type,
+            period_key=period_key,
+            result_json=llm_json or fallback_json,
+        )
+        return read_id, cached_after
 
     def get_read(self, read_id: str) -> ReadResponse | None:
         with SessionLocal() as db:
