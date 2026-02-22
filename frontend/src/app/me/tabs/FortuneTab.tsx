@@ -24,7 +24,7 @@ export default function FortuneTab({ data }: FortuneTabProps) {
       <div className={styles.divider} />
 
       {/* LLM Streaming Output Area Placeholder */}
-      <h3 className={styles.sectionSubTitle}>AI 실시간 리딩</h3>
+      <h3 className={styles.sectionSubTitle}>실시간 사주 풀이</h3>
       <Card className={styles.llmStreamCard}>
         <div className={styles.llmContent}>
           <p className={styles.streamingText}>
