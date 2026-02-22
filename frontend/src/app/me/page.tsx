@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createRead, getCurrentWeekKey, getProfile, getRead, type ProfileResponse, type ReadResult } from '@/lib/api';
@@ -20,7 +20,7 @@ const FEATURE_MAP: Record<'week' | 'money' | 'love' | 'work', string> = {
   work: 'work_week',
 };
 
-export default function MySajuHub() {
+function MySajuHub() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -185,5 +185,18 @@ export default function MySajuHub() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function MySajuHubPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} />
+        <p className={styles.loadingText}>운명의 지도를 펼치는 중...</p>
+      </div>
+    }>
+      <MySajuHub />
+    </Suspense>
   );
 }

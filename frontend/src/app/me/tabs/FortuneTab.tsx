@@ -16,7 +16,22 @@ export default function FortuneTab({ data }: FortuneTabProps) {
           <div className={styles.scoreValue}>{data.score}<span>점</span></div>
           <h2 className={styles.scoreTitle}>{data.title}</h2>
         </div>
-        <div className={styles.summaryText}>{data.summary}</div>
+        {data.summary && !data.summary.includes('동일 결과를 제공합니다') && (
+          <div className={styles.summaryText}>{data.summary}</div>
+        )}
+      </Card>
+
+      <div className={styles.divider} />
+
+      {/* LLM Streaming Output Area Placeholder */}
+      <h3 className={styles.sectionSubTitle}>AI 실시간 리딩</h3>
+      <Card className={styles.llmStreamCard}>
+        <div className={styles.llmContent}>
+          <p className={styles.streamingText}>
+            여기에 LLM의 스트리밍 응답 텍스트가 표시됩니다...
+            <span className={styles.cursor}>|</span>
+          </p>
+        </div>
       </Card>
 
       <div className={styles.divider} />

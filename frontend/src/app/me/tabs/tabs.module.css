@@ -224,6 +224,50 @@
     color: var(--foreground);
 }
 
+.llmStreamCard {
+    padding: 1.5rem;
+    background: var(--bg-card);
+    border: 1px dashed var(--primary);
+    position: relative;
+}
+
+.llmContent {
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.streamingText {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--foreground);
+    text-align: left;
+    width: 100%;
+}
+
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: var(--primary);
+    vertical-align: middle;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
 .detailsList {
     display: flex;
     flex-direction: column;
