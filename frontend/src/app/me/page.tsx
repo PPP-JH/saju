@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -48,6 +48,11 @@ function MySajuHub() {
   const [fortuneStreamTextByTab, setFortuneStreamTextByTab] = useState<FortuneStreamTextMap>({});
   const [fortuneStreamLoadingByTab, setFortuneStreamLoadingByTab] = useState<FortuneStreamLoadingMap>({});
   const [fortuneStreamErrorByTab, setFortuneStreamErrorByTab] = useState<FortuneStreamErrorMap>({});
+  const profileStreamLoadingRef = useRef(profileStreamLoading);
+  const fortuneStreamLoadingByTabRef = useRef(fortuneStreamLoadingByTab);
+
+  profileStreamLoadingRef.current = profileStreamLoading;
+  fortuneStreamLoadingByTabRef.current = fortuneStreamLoadingByTab;
 
   const currentWeekKey = useMemo(() => getCurrentWeekKey(), []);
 
@@ -81,7 +86,7 @@ function MySajuHub() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!profile || activeTab !== 'profile' || profileStreamResult || profileStreamLoading) {
+    if (!profile || activeTab !== 'profile' || profileStreamResult || profileStreamLoadingRef.current) {
       return;
     }
 
@@ -125,7 +130,7 @@ function MySajuHub() {
     return () => {
       controller.abort();
     };
-  }, [activeTab, currentWeekKey, profile, profileStreamLoading, profileStreamResult]);
+  }, [activeTab, currentWeekKey, profile, profileStreamResult]);
 
   useEffect(() => {
     if (!profile || !['week', 'money', 'love', 'work'].includes(activeTab)) {
@@ -133,7 +138,7 @@ function MySajuHub() {
     }
 
     const key = activeTab as FortuneTabId;
-    if (fortuneByTab[key] || fortuneStreamLoadingByTab[key]) {
+    if (fortuneByTab[key] || fortuneStreamLoadingByTabRef.current[key]) {
       return;
     }
 
@@ -185,7 +190,7 @@ function MySajuHub() {
     return () => {
       controller.abort();
     };
-  }, [activeTab, currentWeekKey, fortuneByTab, fortuneStreamLoadingByTab, profile]);
+  }, [activeTab, currentWeekKey, fortuneByTab, profile]);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'profile', label: '사주 풀이' },
