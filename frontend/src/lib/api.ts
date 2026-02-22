@@ -133,11 +133,12 @@ export async function streamRead(
   let buffer = '';
 
   const emitEvent = (chunk: string) => {
-    const lines = chunk.split('\n');
+    const lines = chunk.split(/\r?\n/);
     let eventName = 'message';
     let dataText = '';
 
-    for (const line of lines) {
+    for (const rawLine of lines) {
+      const line = rawLine.trimStart();
       if (line.startsWith('event:')) {
         eventName = line.slice(6).trim();
       } else if (line.startsWith('data:')) {
@@ -176,12 +177,14 @@ export async function streamRead(
     buffer += decoder.decode(value, { stream: true });
 
     while (true) {
-      const separatorIndex = buffer.indexOf('\n\n');
+      const separatorIndex = buffer.search(/\r?\n\r?\n/);
       if (separatorIndex === -1) {
         break;
       }
+      const separatorMatch = buffer.slice(separatorIndex).match(/^\r?\n\r?\n/);
+      const separatorLength = separatorMatch ? separatorMatch[0].length : 2;
       const eventChunk = buffer.slice(0, separatorIndex);
-      buffer = buffer.slice(separatorIndex + 2);
+      buffer = buffer.slice(separatorIndex + separatorLength);
       emitEvent(eventChunk);
     }
   }

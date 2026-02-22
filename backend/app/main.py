@@ -47,6 +47,12 @@ def _to_sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _chunk_text(text: str, chunk_size: int = 24) -> list[str]:
+    if not text:
+        return []
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
@@ -115,6 +121,7 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
             return
 
         raw_text = ""
+        has_delta = False
         try:
             async for delta in narrator.stream_result_text(
                 profile=profile,
@@ -122,12 +129,29 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                 period_key=payload.period_key,
             ):
                 raw_text += delta
+                has_delta = True
                 yield _to_sse(event="delta", data={"text": delta})
         except Exception:
             raw_text = ""
+            has_delta = False
 
         parsed = narrator.parse_result_text(raw_text) if raw_text else None
         final_result = parsed or fallback_json
+
+        # If LLM stream yielded nothing, still stream fallback narration chunks so UI doesn't stay empty.
+        if not has_delta:
+            fallback_text = " ".join(
+                [
+                    str(final_result.get("summary", "")),
+                    " ".join(
+                        item.get("content", "")
+                        for item in final_result.get("details", [])
+                        if isinstance(item, dict)
+                    ),
+                ]
+            ).strip()
+            for chunk in _chunk_text(fallback_text):
+                yield _to_sse(event="delta", data={"text": chunk})
 
         try:
             read_id, cached = store.create_or_get_read_from_result(

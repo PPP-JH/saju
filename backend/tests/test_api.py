@@ -368,3 +368,40 @@ def test_read_stream_returns_cached_done() -> None:
     assert event_name == 'done'
     assert payload['cached'] is True
     assert payload['read_id'] == read_id
+
+
+def test_read_stream_emits_fallback_delta_when_llm_stream_empty(monkeypatch) -> None:
+    profile_resp = request(
+        'POST',
+        '/api/profile',
+        json={
+            'name': '무응답스트림',
+            'gender': 'F',
+            'birth_date': '1990-07-07',
+            'birth_time': None,
+            'is_lunar': False,
+        },
+    )
+    profile_id = profile_resp.json()['profile_id']
+
+    async def empty_stream(**_):
+        if False:
+            yield ''
+
+    monkeypatch.setattr('app.main.narrator.stream_result_text', empty_stream)
+    monkeypatch.setattr('app.main.narrator.parse_result_text', lambda *_: None)
+
+    status_code, stream_text = stream_request(
+        '/api/read/stream',
+        {
+            'profile_id': profile_id,
+            'feature_type': 'week',
+            'period_key': '2026-W16',
+        },
+    )
+
+    assert status_code == 200
+    events = parse_sse_events(stream_text)
+    assert any(name == 'delta' for name, _ in events)
+    done_events = [payload for name, payload in events if name == 'done']
+    assert len(done_events) == 1

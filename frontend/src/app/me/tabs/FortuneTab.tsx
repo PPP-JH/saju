@@ -36,7 +36,7 @@ export default function FortuneTab({ data, streamText, streamLoading, streamErro
       <Card className={styles.llmStreamCard}>
         {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
         {!streamError && !streamText && streamLoading && (
-          <p className={styles.streamHintText}>문장을 생성 중입니다...</p>
+          <p className={styles.streamHintText}>사주의 흐름을 살피는 중입니다...</p>
         )}
         {!!streamText && (
           <p className={styles.streamingText}>

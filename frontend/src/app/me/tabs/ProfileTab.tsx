@@ -121,14 +121,14 @@ export default function ProfileTab({
       <header className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>실시간 사주 풀이</h2>
         <p className={styles.sectionDesc}>
-          해석 문장이 생성되는 흐름을 실시간으로 확인할 수 있습니다.
+          사주의 흐름을 읽어가는 과정을 실시간으로 확인할 수 있습니다.
         </p>
       </header>
 
       <Card className={styles.llmStreamCard}>
         {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
         {!streamError && !streamText && streamLoading && (
-          <p className={styles.streamHintText}>문장을 생성 중입니다...</p>
+          <p className={styles.streamHintText}>사주의 흐름을 살피는 중입니다...</p>
         )}
         {!!streamText && (
           <p className={styles.streamingText}>
