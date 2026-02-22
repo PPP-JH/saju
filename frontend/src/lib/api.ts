@@ -114,23 +114,32 @@ export async function streamRead(
   },
   signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/read/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-    signal,
-    cache: 'no-store',
-  });
+  const timeoutMs = 25000;
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
+  const requestController = new AbortController();
+  const abortRequest = () => requestController.abort();
+  timeoutController.signal.addEventListener('abort', abortRequest, { once: true });
+  signal?.addEventListener('abort', abortRequest, { once: true });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/read/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: requestController.signal,
+      cache: 'no-store',
+    });
 
-  if (!response.ok || !response.body) {
-    throw new Error(`스트리밍 요청 실패 (${response.status})`);
-  }
+    if (!response.ok || !response.body) {
+      throw new Error(`스트리밍 요청 실패 (${response.status})`);
+    }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let buffer = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let hasDone = false;
 
   const emitEvent = (chunk: string) => {
     const lines = chunk.split(/\r?\n/);
@@ -157,6 +166,7 @@ export async function streamRead(
         return;
       }
       if (eventName === 'done') {
+        hasDone = true;
         handlers.onDone(payloadData as StreamDonePayload);
         return;
       }
@@ -169,28 +179,37 @@ export async function streamRead(
     }
   };
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    buffer += decoder.decode(value, { stream: true });
-
     while (true) {
-      const separatorIndex = buffer.search(/\r?\n\r?\n/);
-      if (separatorIndex === -1) {
+      const { value, done } = await reader.read();
+      if (done) {
         break;
       }
-      const separatorMatch = buffer.slice(separatorIndex).match(/^\r?\n\r?\n/);
-      const separatorLength = separatorMatch ? separatorMatch[0].length : 2;
-      const eventChunk = buffer.slice(0, separatorIndex);
-      buffer = buffer.slice(separatorIndex + separatorLength);
-      emitEvent(eventChunk);
-    }
-  }
+      buffer += decoder.decode(value, { stream: true });
 
-  if (buffer.trim()) {
-    emitEvent(buffer);
+      while (true) {
+        const separatorIndex = buffer.search(/\r?\n\r?\n/);
+        if (separatorIndex === -1) {
+          break;
+        }
+        const separatorMatch = buffer.slice(separatorIndex).match(/^\r?\n\r?\n/);
+        const separatorLength = separatorMatch ? separatorMatch[0].length : 2;
+        const eventChunk = buffer.slice(0, separatorIndex);
+        buffer = buffer.slice(separatorIndex + separatorLength);
+        emitEvent(eventChunk);
+      }
+    }
+
+    if (buffer.trim()) {
+      emitEvent(buffer);
+    }
+
+    if (!hasDone) {
+      handlers.onError?.('스트림이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.');
+    }
+  } finally {
+    clearTimeout(timeout);
+    timeoutController.signal.removeEventListener('abort', abortRequest);
+    signal?.removeEventListener('abort', abortRequest);
   }
 }
 

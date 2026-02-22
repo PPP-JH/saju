@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -21,6 +22,8 @@ from .models import (
     ReadResponse,
 )
 from .services import store
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -88,8 +91,20 @@ async def create_read(payload: ReadCreateRequest) -> ReadCreateResponse:
 
 @app.post("/api/read/stream")
 async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
+    logger.info(
+        "Read stream requested: profile_id=%s feature_type=%s period_key=%s",
+        payload.profile_id,
+        payload.feature_type,
+        payload.period_key,
+    )
     bundle = store.get_profile_bundle(payload.profile_id)
     if bundle is None:
+        logger.warning(
+            "Read stream profile missing: profile_id=%s feature_type=%s period_key=%s",
+            payload.profile_id,
+            payload.feature_type,
+            payload.period_key,
+        )
         raise HTTPException(status_code=404, detail="profile not found")
 
     profile, input_hash = bundle
@@ -108,6 +123,12 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
 
     async def stream_events() -> AsyncIterator[str]:
         if cached_read is not None:
+            logger.info(
+                "Read stream cache hit: read_id=%s feature_type=%s period_key=%s",
+                cached_read.read_id,
+                cached_read.feature_type,
+                cached_read.period_key,
+            )
             yield _to_sse(
                 event="done",
                 data={
@@ -132,6 +153,12 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                 has_delta = True
                 yield _to_sse(event="delta", data={"text": delta})
         except Exception:
+            logger.exception(
+                "Read stream narration iteration failed: profile_id=%s feature_type=%s period_key=%s",
+                payload.profile_id,
+                payload.feature_type,
+                payload.period_key,
+            )
             raw_text = ""
             has_delta = False
 
@@ -150,6 +177,12 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                     ),
                 ]
             ).strip()
+            logger.warning(
+                "Read stream no llm delta, using fallback chunks: profile_id=%s feature_type=%s period_key=%s",
+                payload.profile_id,
+                payload.feature_type,
+                payload.period_key,
+            )
             for chunk in _chunk_text(fallback_text):
                 yield _to_sse(event="delta", data={"text": chunk})
 
@@ -161,11 +194,24 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                 result_json=final_result,
             )
         except KeyError:
+            logger.error(
+                "Read stream persist failed: profile_id=%s feature_type=%s period_key=%s",
+                payload.profile_id,
+                payload.feature_type,
+                payload.period_key,
+            )
             yield _to_sse(event="error", data={"detail": "profile not found"})
             return
 
         persisted = store.get_read(read_id)
         result_json = persisted.result_json if persisted else final_result
+        logger.info(
+            "Read stream done: read_id=%s cached=%s feature_type=%s period_key=%s",
+            read_id,
+            cached,
+            payload.feature_type,
+            payload.period_key,
+        )
         yield _to_sse(
             event="done",
             data={
