@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import UTC, datetime
 from threading import Lock
 from uuid import NAMESPACE_URL, uuid5
@@ -127,8 +128,27 @@ class DatabaseStore:
     def _base_score(seed_hex: str) -> int:
         return 55 + (int(seed_hex[:2], 16) % 41)
 
+    @staticmethod
+    def _human_period_label(period_key: str) -> str:
+        week_match = re.fullmatch(r"(\d{4})-W(\d{2})", period_key)
+        if week_match:
+            year, week = week_match.groups()
+            return f"{year}년 {int(week)}주차"
+
+        month_match = re.fullmatch(r"(\d{4})-(\d{2})", period_key)
+        if month_match:
+            year, month = month_match.groups()
+            return f"{year}년 {int(month)}월"
+
+        year_match = re.fullmatch(r"(\d{4})", period_key)
+        if year_match:
+            return f"{year_match.group(1)}년"
+
+        return "이번 기간"
+
     def _build_result_json(self, profile: ProfileResponse, feature_type: str, period_key: str, seed_hex: str) -> dict:
         score = self._base_score(seed_hex)
+        period_label = self._human_period_label(period_key)
 
         title_map = {
             "week": "흐름을 정리하고 성과를 만드는 주",
@@ -140,20 +160,20 @@ class DatabaseStore:
         title = title_map.get(feature_type, "이번 흐름 요약")
         summary_map = {
             "profile_detail": f"{profile.summary_text}를 중심으로 현재의 강점과 보완점을 함께 살펴보는 흐름입니다.",
-            "week": f"{period_key}에는 흐름을 단순하게 정리할수록 성과가 또렷해집니다.",
-            "money_week": f"{period_key}에는 지출 균형을 먼저 잡고, 작은 절약을 꾸준히 이어가는 전략이 유리합니다.",
-            "love_week": f"{period_key}에는 감정 표현의 밀도를 높이는 대화가 관계 안정에 도움이 됩니다.",
-            "work_week": f"{period_key}에는 우선순위를 명확히 잡으면 업무 완성도와 신뢰가 함께 올라갑니다.",
+            "week": f"{period_label}에는 흐름을 단순하게 정리할수록 성과가 또렷해집니다.",
+            "money_week": f"{period_label}에는 지출 균형을 먼저 잡고, 작은 절약을 꾸준히 이어가는 전략이 유리합니다.",
+            "love_week": f"{period_label}에는 감정 표현의 밀도를 높이는 대화가 관계 안정에 도움이 됩니다.",
+            "work_week": f"{period_label}에는 우선순위를 명확히 잡으면 업무 완성도와 신뢰가 함께 올라갑니다.",
         }
 
         result = {
             "title": title,
-            "summary": summary_map.get(feature_type, f"{period_key}의 흐름을 차분히 살펴보는 시기입니다."),
+            "summary": summary_map.get(feature_type, f"{period_label}의 흐름을 차분히 살펴보는 시기입니다."),
             "score": score,
             "details": [
                 {
                     "subtitle": "핵심",
-                    "content": f"{profile.summary_text}. 이번 기간({period_key})에는 계획을 단순하게 유지할수록 성과가 납니다.",
+                    "content": f"{profile.summary_text}. {period_label}에는 계획을 단순하게 유지할수록 성과가 납니다.",
                 },
                 {
                     "subtitle": "주의",
