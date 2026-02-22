@@ -13,7 +13,7 @@ interface FortuneTabProps {
 
 export default function FortuneTab({ data, streamText, streamLoading, streamError }: FortuneTabProps) {
   if (!data && !streamLoading && !streamError) {
-    return <p className={styles.streamHintText}>운세를 준비하고 있습니다...</p>;
+    return <p className={styles.streamHintText}>사주의 흐름을 읽는 중입니다...</p>;
   }
 
   return (

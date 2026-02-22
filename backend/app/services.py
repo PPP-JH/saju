@@ -185,8 +185,8 @@ class DatabaseStore:
                 },
             ],
             "actions": [
-                "주요 결정은 오전보다 오후에 점검 후 확정하세요.",
-                "이번 주 핵심 목표 1개만 남기고 나머지는 보류하세요.",
+                "중요한 결정은 한 번 더 점검한 뒤 차분히 확정해보세요.",
+                "핵심 목표를 한두 가지로 좁히면 집중력이 살아납니다.",
             ],
         }
         return FortuneResult.model_validate(result).model_dump()
