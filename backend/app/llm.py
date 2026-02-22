@@ -6,13 +6,13 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any
 
-import httpx
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 from pydantic import ValidationError
 
 from .models import FortuneResult, ProfileResponse
 
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-GEMINI_STREAM_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 logger = logging.getLogger(__name__)
 
@@ -106,14 +106,20 @@ class GeminiNarrator:
             "work_week": 1300,
         }
         return {
-            "contents": [{"parts": [{"text": self._prompt(profile, feature_type, period_key)}]}],
-            "generationConfig": {
-                "temperature": 0.4,
-                "topP": 0.9,
-                "maxOutputTokens": max_tokens_map.get(feature_type, 1300),
-                "responseMimeType": "application/json",
-            },
+            "contents": self._prompt(profile, feature_type, period_key),
+            "config": types.GenerateContentConfig(
+                temperature=0.4,
+                top_p=0.9,
+                max_output_tokens=max_tokens_map.get(feature_type, 1300),
+                response_mime_type="application/json",
+            ),
         }
+
+    def _new_client(self) -> genai.Client:
+        return genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(timeout=int(self.timeout_seconds)),
+        )
 
     def parse_result_text(self, raw_text: str) -> dict[str, Any] | None:
         try:
@@ -127,17 +133,17 @@ class GeminiNarrator:
         if not self.enabled:
             return None
 
-        url = GEMINI_API_URL.format(model=self.model)
-        params = {"key": self.api_key}
         payload = self._request_payload(profile, feature_type, period_key)
+        client = self._new_client()
 
         for _ in range(2):
             try:
-                with httpx.Client(timeout=self.timeout_seconds) as client:
-                    response = client.post(url, params=params, json=payload)
-                    response.raise_for_status()
-                data = response.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                response = client.models.generate_content(
+                    model=self.model,
+                    contents=payload["contents"],
+                    config=payload["config"],
+                )
+                text = response.text or ""
                 validated = self.parse_result_text(text)
                 if validated is not None:
                     return validated
@@ -146,30 +152,20 @@ class GeminiNarrator:
                     feature_type,
                     period_key,
                 )
-            except httpx.HTTPStatusError as err:
-                request_id = (
-                    err.response.headers.get("x-request-id")
-                    or err.response.headers.get("x-cloud-trace-context")
-                    or "-"
-                )
+            except APIError as err:
                 logger.error(
-                    "Gemini non-stream HTTP error: status=%s request_id=%s feature_type=%s period_key=%s body=%s",
-                    err.response.status_code,
-                    request_id,
+                    "Gemini non-stream API error: status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
+                    getattr(err, "status", getattr(err, "code", "-")),
+                    getattr(err, "response_json", {}).get("error", {}).get("status", "-")
+                    if isinstance(getattr(err, "response_json", {}), dict)
+                    else "-",
                     feature_type,
                     period_key,
-                    err.response.text[:800],
+                    json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
                 )
-            except httpx.HTTPError as err:
+            except Exception as err:
                 logger.error(
-                    "Gemini non-stream transport error: feature_type=%s period_key=%s error=%s",
-                    feature_type,
-                    period_key,
-                    str(err),
-                )
-            except (KeyError, IndexError, TypeError) as err:
-                logger.error(
-                    "Gemini non-stream parse error: feature_type=%s period_key=%s error=%s",
+                    "Gemini non-stream unknown error: feature_type=%s period_key=%s error=%s",
                     feature_type,
                     period_key,
                     str(err),
@@ -187,61 +183,45 @@ class GeminiNarrator:
         if not self.enabled:
             return
 
-        url = GEMINI_STREAM_API_URL.format(model=self.model)
-        params = {"key": self.api_key, "alt": "sse"}
         payload = self._request_payload(profile, feature_type, period_key)
         prior_text = ""
-
-        timeout = httpx.Timeout(self.timeout_seconds, read=self.timeout_seconds)
+        client = self._new_client()
 
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("POST", url, params=params, json=payload) as response:
-                    response.raise_for_status()
-                    async for line in response.aiter_lines():
-                        if not line or not line.startswith("data:"):
-                            continue
-
-                        data_text = line[len("data:") :].strip()
-                        if data_text == "[DONE]":
-                            break
-
-                        try:
-                            event = json.loads(data_text)
-                            current_text = event["candidates"][0]["content"]["parts"][0]["text"]
-                        except (json.JSONDecodeError, KeyError, IndexError, TypeError):
-                            continue
-
-                        if not current_text:
-                            continue
-
-                        if current_text.startswith(prior_text):
-                            delta = current_text[len(prior_text) :]
-                            prior_text = current_text
-                        else:
-                            delta = current_text
-                            prior_text += current_text
-
-                        if delta:
-                            yield delta
-        except httpx.HTTPStatusError as err:
-            request_id = (
-                err.response.headers.get("x-request-id")
-                or err.response.headers.get("x-cloud-trace-context")
-                or "-"
+            stream = await client.aio.models.generate_content_stream(
+                model=self.model,
+                contents=payload["contents"],
+                config=payload["config"],
             )
+            async for chunk in stream:
+                current_text = chunk.text or ""
+                if not current_text:
+                    continue
+
+                if current_text.startswith(prior_text):
+                    delta = current_text[len(prior_text) :]
+                    prior_text = current_text
+                else:
+                    delta = current_text
+                    prior_text += current_text
+
+                if delta:
+                    yield delta
+        except APIError as err:
             logger.error(
-                "Gemini stream HTTP error: status=%s request_id=%s feature_type=%s period_key=%s body=%s",
-                err.response.status_code,
-                request_id,
+                "Gemini stream API error: status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
+                getattr(err, "status", getattr(err, "code", "-")),
+                getattr(err, "response_json", {}).get("error", {}).get("status", "-")
+                if isinstance(getattr(err, "response_json", {}), dict)
+                else "-",
                 feature_type,
                 period_key,
-                err.response.text[:800],
+                json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
             )
             return
-        except httpx.HTTPError as err:
+        except Exception as err:
             logger.error(
-                "Gemini stream transport error: feature_type=%s period_key=%s error=%s",
+                "Gemini stream unknown error: feature_type=%s period_key=%s error=%s",
                 feature_type,
                 period_key,
                 str(err),
