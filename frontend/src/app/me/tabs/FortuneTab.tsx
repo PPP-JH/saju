@@ -24,9 +24,7 @@ export default function FortuneTab({ data, streamText, streamLoading, streamErro
             <div className={styles.scoreValue}>{data.score}<span>점</span></div>
             <h2 className={styles.scoreTitle}>{data.title}</h2>
           </div>
-          {data.summary && !data.summary.includes('동일 결과를 제공합니다') && (
-            <div className={styles.summaryText}>{data.summary}</div>
-          )}
+          {data.summary && <div className={styles.summaryText}>{data.summary}</div>}
         </Card>
       )}
 

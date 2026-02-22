@@ -138,10 +138,17 @@ class DatabaseStore:
             "profile_detail": "내 사주의 핵심 흐름 정리",
         }
         title = title_map.get(feature_type, "이번 흐름 요약")
+        summary_map = {
+            "profile_detail": f"{profile.summary_text}를 중심으로 현재의 강점과 보완점을 함께 살펴보는 흐름입니다.",
+            "week": f"{period_key}에는 흐름을 단순하게 정리할수록 성과가 또렷해집니다.",
+            "money_week": f"{period_key}에는 지출 균형을 먼저 잡고, 작은 절약을 꾸준히 이어가는 전략이 유리합니다.",
+            "love_week": f"{period_key}에는 감정 표현의 밀도를 높이는 대화가 관계 안정에 도움이 됩니다.",
+            "work_week": f"{period_key}에는 우선순위를 명확히 잡으면 업무 완성도와 신뢰가 함께 올라갑니다.",
+        }
 
         result = {
             "title": title,
-            "summary": f"{feature_type} 기준 분석입니다. 동일 조건에서는 동일 결과를 제공합니다.",
+            "summary": summary_map.get(feature_type, f"{period_key}의 흐름을 차분히 살펴보는 시기입니다."),
             "score": score,
             "details": [
                 {
