@@ -97,7 +97,7 @@ class GeminiNarrator:
             f"output_schema: {json.dumps(schema_hint, ensure_ascii=False)}"
         )
 
-    def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str) -> dict[str, Any]:
+    def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str, *, stream: bool = False) -> dict[str, Any]:
         max_tokens_map = {
             "profile_detail": 1500,
             "week": 1300,
@@ -105,14 +105,19 @@ class GeminiNarrator:
             "love_week": 1300,
             "work_week": 1300,
         }
+        config_kwargs: dict[str, Any] = {
+            "temperature": 0.4,
+            "top_p": 0.9,
+            "max_output_tokens": max_tokens_map.get(feature_type, 1300),
+        }
+        # response_mime_type="application/json" causes Gemini to buffer the full
+        # response before streaming, defeating real-time output. Only set it for
+        # non-streaming requests where we need structured JSON parsing.
+        if not stream:
+            config_kwargs["response_mime_type"] = "application/json"
         return {
             "contents": self._prompt(profile, feature_type, period_key),
-            "config": types.GenerateContentConfig(
-                temperature=0.4,
-                top_p=0.9,
-                max_output_tokens=max_tokens_map.get(feature_type, 1300),
-                response_mime_type="application/json",
-            ),
+            "config": types.GenerateContentConfig(**config_kwargs),
         }
 
     def _new_client(self) -> genai.Client:
@@ -183,7 +188,7 @@ class GeminiNarrator:
         if not self.enabled:
             return
 
-        payload = self._request_payload(profile, feature_type, period_key)
+        payload = self._request_payload(profile, feature_type, period_key, stream=True)
         prior_text = ""
         client = self._new_client()
 
