@@ -101,6 +101,20 @@ export async function getRead(readId: string): Promise<ReadResponse> {
   return apiFetch<ReadResponse>(`/api/read/${readId}`);
 }
 
+async function fakeStreamText(
+  text: string,
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const CHUNK_SIZE = 5;
+  const DELAY_MS = 18;
+  for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+    if (signal?.aborted) break;
+    onDelta(text.slice(i, i + CHUNK_SIZE));
+    await new Promise<void>((resolve) => setTimeout(resolve, DELAY_MS));
+  }
+}
+
 export async function streamRead(
   payload: {
     profile_id: string;
@@ -140,44 +154,46 @@ export async function streamRead(
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let hasDone = false;
+    let hasDelta = false;
+    let pendingDone: StreamDonePayload | null = null;
 
-  const emitEvent = (chunk: string) => {
-    const lines = chunk.split(/\r?\n/);
-    let eventName = 'message';
-    let dataText = '';
+    const emitEvent = (chunk: string) => {
+      const lines = chunk.split(/\r?\n/);
+      let eventName = 'message';
+      let dataText = '';
 
-    for (const rawLine of lines) {
-      const line = rawLine.trimStart();
-      if (line.startsWith('event:')) {
-        eventName = line.slice(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataText += line.slice(5).trim();
+      for (const rawLine of lines) {
+        const line = rawLine.trimStart();
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          dataText += line.slice(5).trim();
+        }
       }
-    }
 
-    if (!dataText) {
-      return;
-    }
-
-    try {
-      const payloadData = JSON.parse(dataText) as Record<string, unknown>;
-      if (eventName === 'delta' && typeof payloadData.text === 'string') {
-        handlers.onDelta?.(payloadData.text);
+      if (!dataText) {
         return;
       }
-      if (eventName === 'done') {
-        hasDone = true;
-        handlers.onDone(payloadData as StreamDonePayload);
-        return;
+
+      try {
+        const payloadData = JSON.parse(dataText) as Record<string, unknown>;
+        if (eventName === 'delta' && typeof payloadData.text === 'string') {
+          hasDelta = true;
+          handlers.onDelta?.(payloadData.text);
+          return;
+        }
+        if (eventName === 'done') {
+          pendingDone = payloadData as StreamDonePayload;
+          return;
+        }
+        if (eventName === 'error') {
+          const detail = typeof payloadData.detail === 'string' ? payloadData.detail : '스트리밍 오류';
+          handlers.onError?.(detail);
+        }
+      } catch {
+        handlers.onError?.('스트리밍 응답 파싱 실패');
       }
-      if (eventName === 'error') {
-        const detail = typeof payloadData.detail === 'string' ? payloadData.detail : '스트리밍 오류';
-        handlers.onError?.(detail);
-      }
-    } catch {
-      handlers.onError?.('스트리밍 응답 파싱 실패');
-    }
-  };
+    };
 
     while (true) {
       const { value, done } = await reader.read();
@@ -201,6 +217,19 @@ export async function streamRead(
 
     if (buffer.trim()) {
       emitEvent(buffer);
+    }
+
+    // If done payload received, optionally fake-stream cached results before firing onDone
+    if (pendingDone) {
+      hasDone = true;
+      const donePayload = pendingDone as StreamDonePayload;
+      if (!hasDelta && handlers.onDelta) {
+        const summaryText = donePayload.result_json?.summary ?? '';
+        if (summaryText) {
+          await fakeStreamText(summaryText, handlers.onDelta, requestController.signal);
+        }
+      }
+      handlers.onDone(donePayload);
     }
 
     if (!hasDone) {

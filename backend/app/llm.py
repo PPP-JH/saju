@@ -99,11 +99,11 @@ class GeminiNarrator:
 
     def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str, *, stream: bool = False) -> dict[str, Any]:
         max_tokens_map = {
-            "profile_detail": 1500,
-            "week": 1300,
-            "money_week": 1300,
-            "love_week": 1300,
-            "work_week": 1300,
+            "profile_detail": 2000,
+            "week": 2000,
+            "money_week": 2000,
+            "love_week": 2000,
+            "work_week": 2000,
         }
         config_kwargs: dict[str, Any] = {
             "temperature": 0.4,
