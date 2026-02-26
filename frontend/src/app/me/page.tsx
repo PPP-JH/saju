@@ -111,20 +111,18 @@ function MySajuHub() {
         },
         onError: (message) => {
           setProfileStreamError(message);
+          setProfileStreamLoading(false);
         },
       },
       controller.signal,
     )
       .catch((err) => {
-        if (controller.signal.aborted) {
-          return;
+        if (!controller.signal.aborted) {
+          setProfileStreamError(err instanceof Error ? err.message : '스트리밍 호출에 실패했습니다.');
         }
-        setProfileStreamError(err instanceof Error ? err.message : '스트리밍 호출에 실패했습니다.');
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          setProfileStreamLoading(false);
-        }
+        setProfileStreamLoading(false);
       });
 
     return () => {
@@ -169,6 +167,7 @@ function MySajuHub() {
         },
         onError: (message) => {
           setFortuneStreamErrorByTab((prev) => ({ ...prev, [key]: message }));
+          setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
         },
       },
       controller.signal,
@@ -182,9 +181,8 @@ function MySajuHub() {
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
-        }
+        // abort 여부 관계없이 loading 해제 — abort 후 탭 재방문 시 스트림 재시작 보장
+        setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
       });
 
     return () => {
