@@ -128,7 +128,7 @@ export async function streamRead(
   },
   signal?: AbortSignal,
 ): Promise<void> {
-  const timeoutMs = 25000;
+  const timeoutMs = 180000; // 3분 — 8192 토큰 생성에 충분한 여유
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
   const requestController = new AbortController();
