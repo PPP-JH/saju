@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from .models import FortuneResult, ProfileResponse
 
-DEFAULT_GEMINI_MODEL = "gemini-3.0-flash"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +41,15 @@ class GeminiNarrator:
         return text
 
     @staticmethod
+    def _period_label(feature_type: str) -> str:
+        """Convert feature_type to natural Korean time label."""
+        if feature_type in ("week", "money_week", "love_week", "work_week"):
+            return "이번 주"
+        if feature_type == "profile_detail":
+            return "현재"
+        return "이번 기간"
+
+    @staticmethod
     def _prompt(profile: ProfileResponse, feature_type: str, period_key: str) -> str:
         profile_payload = {
             "pillars": profile.pillars.model_dump(),
@@ -56,6 +65,7 @@ class GeminiNarrator:
             "details": [{"subtitle": "string", "content": "string"}],
             "actions": ["string"],
         }
+        period_label = GeminiNarrator._period_label(feature_type)
         style_guide = {
             "tone": [
                 "사주 상담사가 차분하게 흐름을 읽어주는 문체",
@@ -63,11 +73,13 @@ class GeminiNarrator:
                 "사용자 존중형 표현 사용",
             ],
             "content_rules": [
-                "summary는 4~6문장, 과장 없이 핵심 흐름 중심",
-                "details는 4~6개, 각 content는 2~4문장",
-                "actions는 바로 실행 가능한 문장형 조언",
+                "summary는 10~15문장, 핵심 흐름 + 구체적 상황 묘사 + 실용 조언을 균형 있게",
+                "details는 6~8개, 각 content는 4~6문장으로 충분히 상세하게 작성",
+                "actions는 8~10개, 바로 실행 가능한 구체적 문장형 조언",
                 "elements/ten_gods_summary/keywords/pillars를 근거로 자연스럽게 반영",
-                "같은 표현 반복을 피하고 문장을 충분히 구체화",
+                "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시",
+                f"period_label('{period_label}')을 활용해 '이번 주에는', '이번 주 흐름은' 등 자연스러운 표현 사용",
+                "'N주차', '2026년 N주', 날짜·주차 번호 직접 언급 금지",
             ],
             "forbidden": [
                 "AI",
@@ -75,6 +87,8 @@ class GeminiNarrator:
                 "정답",
                 "100% 확정",
                 "반드시 불행/파국",
+                "N주차",
+                "년 N주",
             ],
         }
         feature_hint = {
@@ -91,7 +105,8 @@ class GeminiNarrator:
             "문체 규칙: 'AI/모델' 등 구현 언급 금지, 단정적 예언 금지, 위로/조언 중심.\n"
             f"feature_type: {feature_type}\n"
             f"feature_focus: {feature_hint.get(feature_type, '현재 기간의 핵심 흐름 중심')}\n"
-            f"period_key: {period_key}\n"
+            f"period_label: {period_label}\n"
+            "period_label_usage: summary/details/actions에서 시간 표현이 필요할 때 반드시 period_label 값만 사용하세요. '주차', '월', 연도·숫자 형식의 날짜 직접 언급 금지.\n"
             f"profile: {json.dumps(profile_payload, ensure_ascii=False)}\n"
             f"style_guide: {json.dumps(style_guide, ensure_ascii=False)}\n"
             f"output_schema: {json.dumps(schema_hint, ensure_ascii=False)}"
@@ -99,11 +114,11 @@ class GeminiNarrator:
 
     def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str, *, stream: bool = False) -> dict[str, Any]:
         max_tokens_map = {
-            "profile_detail": 2000,
-            "week": 2000,
-            "money_week": 2000,
-            "love_week": 2000,
-            "work_week": 2000,
+            "profile_detail": 8192,
+            "week": 8192,
+            "money_week": 8192,
+            "love_week": 8192,
+            "work_week": 8192,
         }
         config_kwargs: dict[str, Any] = {
             "temperature": 0.4,
@@ -120,10 +135,15 @@ class GeminiNarrator:
             "config": types.GenerateContentConfig(**config_kwargs),
         }
 
-    def _new_client(self) -> genai.Client:
+    def _new_client(self, *, stream: bool = False) -> genai.Client:
+        # HttpOptions.timeout은 밀리초 단위 (google-genai SDK 내부에서 /1000 변환)
+        if stream:
+            timeout_ms = int(os.getenv("GEMINI_STREAM_TIMEOUT_SECONDS", "120")) * 1000
+        else:
+            timeout_ms = int(self.timeout_seconds * 1000)
         return genai.Client(
             api_key=self.api_key,
-            http_options=types.HttpOptions(timeout=int(self.timeout_seconds)),
+            http_options=types.HttpOptions(timeout=timeout_ms),
         )
 
     def parse_result_text(self, raw_text: str) -> dict[str, Any] | None:
@@ -139,6 +159,7 @@ class GeminiNarrator:
             return None
 
         payload = self._request_payload(profile, feature_type, period_key)
+        print(payload)
         client = self._new_client()
 
         for _ in range(2):
@@ -190,7 +211,7 @@ class GeminiNarrator:
 
         payload = self._request_payload(profile, feature_type, period_key, stream=True)
         prior_text = ""
-        client = self._new_client()
+        client = self._new_client(stream=True)
 
         try:
             stream = await client.aio.models.generate_content_stream(
@@ -225,11 +246,12 @@ class GeminiNarrator:
             )
             return
         except Exception as err:
-            logger.error(
-                "Gemini stream unknown error: feature_type=%s period_key=%s error=%s",
+            logger.exception(
+                "Gemini stream unknown error: type=%s feature_type=%s period_key=%s repr=%r",
+                type(err).__name__,
                 feature_type,
                 period_key,
-                str(err),
+                err,
             )
             return
 

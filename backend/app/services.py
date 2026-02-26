@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 from datetime import UTC, datetime
 from threading import Lock
@@ -73,6 +74,9 @@ _EARTHLY_BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "�
 
 RULES_VERSION = "v1"
 PROMPT_VERSION = "v1"
+
+# 환경변수로 read 캐시 on/off 제어. 기본 활성화.
+_CACHE_READS_ENABLED = os.getenv("CACHE_READS_ENABLED", "true").lower() not in ("false", "0", "no")
 
 
 class DatabaseStore:
@@ -359,6 +363,8 @@ class DatabaseStore:
             return ProfileResponse.model_validate(row.computed_json), row.input_hash
 
     def get_cached_read(self, input_hash: str, feature_type: str, period_key: str) -> ReadResponse | None:
+        if not _CACHE_READS_ENABLED:
+            return None
         cache_key = self._build_cache_key(
             input_hash=input_hash,
             feature_type=feature_type,
@@ -393,6 +399,28 @@ class DatabaseStore:
                     feature_type=feature_type,
                     period_key=period_key,
                 )
+
+                # 캐시 비활성화 시: 기존 row 삭제 후 새 결과로 교체
+                if not _CACHE_READS_ENABLED:
+                    validated = FortuneResult.model_validate(result_json).model_dump()
+                    read_id = self._build_read_id(cache_key)
+                    existing = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+                    if existing:
+                        db.delete(existing)
+                        db.flush()
+                    row = FortuneRead(
+                        read_id=read_id,
+                        cache_key=cache_key,
+                        profile_id=profile_id,
+                        feature_type=feature_type,
+                        period_key=period_key,
+                        result_json=validated,
+                        created_at=datetime.now(UTC),
+                    )
+                    db.add(row)
+                    db.commit()
+                    return read_id, False
+
                 existing = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
                 if existing:
                     return existing.read_id, True

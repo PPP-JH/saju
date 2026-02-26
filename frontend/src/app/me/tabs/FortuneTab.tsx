@@ -46,6 +46,13 @@ export default function FortuneTab({ data, streamText, streamLoading, streamErro
 
       {data && (
         <>
+          <div className={styles.adBanner}>
+            <span className={styles.adLabel}>광고</span>
+            <div className={styles.adSlot}>
+              {/* 광고 코드 삽입 위치 */}
+            </div>
+          </div>
+
           <div className={styles.divider} />
 
           <h3 className={styles.sectionSubTitle}>상세 흐름</h3>
