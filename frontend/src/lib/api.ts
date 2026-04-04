@@ -70,7 +70,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function createProfile(payload: {
-  name: string;
+  name: string | null;
   gender: 'M' | 'F';
   birth_date: string;
   birth_time: string | null;
@@ -240,6 +240,50 @@ export async function streamRead(
     timeoutController.signal.removeEventListener('abort', abortRequest);
     signal?.removeEventListener('abort', abortRequest);
   }
+}
+
+export async function fetchTooltips(
+  profile_id: string,
+  terms: string[],
+): Promise<Record<string, string>> {
+  const res = await apiFetch<{ tooltips: Record<string, string> }>('/api/tooltips', {
+    method: 'POST',
+    body: JSON.stringify({ profile_id, terms }),
+  });
+  return res.tooltips;
+}
+
+export async function logEvent(payload: {
+  session_id: string;
+  event_type: string;
+  term?: string;
+}): Promise<void> {
+  try {
+    await apiFetch<{ success: boolean }>('/api/events', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // best-effort
+  }
+}
+
+export function getSessionId(): string {
+  const key = 'saju_session_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+export function trackDailyVisit(): boolean {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const key = `saju_visit_${today}`;
+  if (localStorage.getItem(key)) return false;
+  localStorage.setItem(key, '1');
+  return true;
 }
 
 export function getCurrentWeekKey(now: Date = new Date()): string {
