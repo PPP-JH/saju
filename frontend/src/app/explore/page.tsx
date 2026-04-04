@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { SiteHeader } from '@/components/SiteHeader';
 import styles from './page.module.css';
 
 export default function ExploreIndex() {
@@ -27,13 +28,12 @@ export default function ExploreIndex() {
 
     return (
         <div className={styles.container}>
-            <header className={styles.header}>
-                <Link href="/" className={styles.logo}>사주해</Link>
+            <SiteHeader right={
                 <nav className={styles.nav}>
                     <Link href="/input">내 사주 보기</Link>
                     <Link href="/learn">사주 상식</Link>
                 </nav>
-            </header>
+            } />
 
             <main className={styles.main}>
                 <div className={styles.hero}>

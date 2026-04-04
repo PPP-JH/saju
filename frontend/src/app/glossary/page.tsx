@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
+import { SiteHeader } from '@/components/SiteHeader';
 import styles from './page.module.css';
 
 export default function Glossary() {
@@ -27,13 +28,12 @@ export default function Glossary() {
 
     return (
         <div className={styles.container}>
-            <header className={styles.header}>
-                <Link href="/" className={styles.logo}>사주해</Link>
+            <SiteHeader right={
                 <nav className={styles.nav}>
                     <Link href="/me">내 사주</Link>
                     <Link href="/learn">사주 상식</Link>
                 </nav>
-            </header>
+            } />
             <main className={styles.main}>
                 <div className={styles.pageHeader}>
                     <h1 className={styles.title}>용어 사전</h1>
