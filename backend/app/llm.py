@@ -223,6 +223,64 @@ class GeminiNarrator:
 
         return None
 
+    @staticmethod
+    def _tooltip_prompt(profile: ProfileResponse, terms: list[str]) -> str:
+        profile_payload = {
+            "pillars": profile.pillars.model_dump(),
+            "summary_text": profile.summary_text,
+            "elements": profile.elements.model_dump(),
+            "ten_gods_summary": profile.ten_gods_summary,
+        }
+        return (
+            "역할: 사주 허브 용어 해설 작성자.\n"
+            "목표: 아래 사주 용어 목록 각각을 이 사용자의 사주 맥락에 맞게 2문장으로 설명합니다.\n"
+            "출력 규칙: JSON 객체만 반환하세요. 형식: {\"용어\": \"설명...\"}\n"
+            "문체 규칙: 전문적이지만 쉽게, 사용자 맥락 중심, 마크다운 금지.\n"
+            f"profile: {json.dumps(profile_payload, ensure_ascii=False)}\n"
+            f"terms: {json.dumps(terms, ensure_ascii=False)}"
+        )
+
+    def generate_tooltips(self, profile: ProfileResponse, terms: list[str]) -> dict[str, str]:
+        """주어진 사주 용어 목록에 대해 2문장 설명을 생성합니다. 실패 시 빈 dict 반환."""
+        if not self.enabled or not terms:
+            return {}
+
+        prompt = self._tooltip_prompt(profile, terms)
+        client = self._new_client()
+        config = types.GenerateContentConfig(
+            temperature=0.3,
+            max_output_tokens=200 * len(terms),
+            response_mime_type="application/json",
+        )
+        model_candidates = [self.model]
+        if self.model != DEFAULT_GEMINI_MODEL:
+            model_candidates.append(DEFAULT_GEMINI_MODEL)
+
+        for model_name in model_candidates:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=config,
+                )
+                raw = self._extract_json_text(response.text or "")
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    return {k: str(v) for k, v in parsed.items() if k in terms}
+            except APIError as err:
+                logger.error(
+                    "Gemini tooltip API error: model=%s terms=%s body=%s",
+                    model_name,
+                    terms,
+                    json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:400],
+                )
+                if self._is_model_error(err):
+                    continue
+            except Exception as err:
+                logger.error("Gemini tooltip unknown error: model=%s error=%s", model_name, str(err))
+
+        return {}
+
     async def stream_result_text(
         self,
         profile: ProfileResponse,

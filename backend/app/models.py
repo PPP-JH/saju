@@ -87,6 +87,25 @@ class FortuneResult(BaseModel):
     actions: list[str] = Field(min_length=1, max_length=12)
 
 
+class TooltipRequest(BaseModel):
+    profile_id: str = Field(min_length=1)
+    terms: list[str] = Field(min_length=1, max_length=30)
+
+
+class TooltipResponse(BaseModel):
+    tooltips: dict[str, str]
+
+
+class EventCreateRequest(BaseModel):
+    session_id: str = Field(min_length=1, max_length=36)
+    event_type: str = Field(min_length=1, max_length=50)
+    term: str | None = Field(default=None, max_length=50)
+
+
+class EventResponse(BaseModel):
+    success: bool
+
+
 class FeedbackCreateRequest(BaseModel):
     read_id: str = Field(min_length=1)
     rating: int = Field(ge=1, le=5)

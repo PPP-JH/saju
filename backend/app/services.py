@@ -12,10 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from .db import SessionLocal
-from .db_models import Feedback, FortuneProfile, FortuneRead
+from .db_models import Event, Feedback, FortuneProfile, FortuneRead, FortuneTooltip
 from .llm import narrator
 from .models import (
     Elements,
+    EventCreateRequest,
     FeedbackCreateRequest,
     FortuneResult,
     Pillars,
@@ -486,6 +487,64 @@ class DatabaseStore:
                 period_key=row.period_key,
                 result_json=row.result_json,
             )
+
+    @staticmethod
+    def _tooltip_cache_key(input_hash: str, term: str) -> str:
+        raw = "|".join([input_hash, "tooltip", term])
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def get_or_create_tooltips(self, profile_id: str, terms: list[str]) -> dict[str, str]:
+        bundle = self.get_profile_bundle(profile_id)
+        if not bundle:
+            raise KeyError("profile not found")
+        profile, input_hash = bundle
+
+        cache_keys = {term: self._tooltip_cache_key(input_hash, term) for term in terms}
+        cached: dict[str, str] = {}
+        missing: list[str] = []
+
+        with SessionLocal() as db:
+            for term, ck in cache_keys.items():
+                row = db.scalar(select(FortuneTooltip).where(FortuneTooltip.cache_key == ck))
+                if row:
+                    cached[term] = row.explanation
+                else:
+                    missing.append(term)
+
+        if missing:
+            generated = narrator.generate_tooltips(profile, missing)
+            if generated:
+                now = datetime.now(UTC)
+                with self._lock:
+                    with SessionLocal() as db:
+                        for term, explanation in generated.items():
+                            ck = cache_keys[term]
+                            existing = db.scalar(select(FortuneTooltip).where(FortuneTooltip.cache_key == ck))
+                            if not existing:
+                                db.add(FortuneTooltip(
+                                    cache_key=ck,
+                                    input_hash=input_hash,
+                                    term=term,
+                                    explanation=explanation,
+                                    created_at=now,
+                                ))
+                        db.commit()
+                cached.update(generated)
+
+        return cached
+
+    def log_event(self, payload: EventCreateRequest) -> None:
+        try:
+            with SessionLocal() as db:
+                db.add(Event(
+                    session_id=payload.session_id,
+                    event_type=payload.event_type,
+                    term=payload.term,
+                    created_at=datetime.now(UTC),
+                ))
+                db.commit()
+        except Exception:
+            logger.exception("Failed to log event: session_id=%s event_type=%s", payload.session_id, payload.event_type)
 
     def add_feedback(self, payload: FeedbackCreateRequest) -> None:
         with SessionLocal() as db:

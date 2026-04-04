@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,8 @@ from fastapi.responses import StreamingResponse
 from .db import init_db
 from .llm import narrator
 from .models import (
+    EventCreateRequest,
+    EventResponse,
     FeedbackCreateRequest,
     FeedbackResponse,
     ProfileCreateRequest,
@@ -20,6 +23,8 @@ from .models import (
     ReadCreateRequest,
     ReadCreateResponse,
     ReadResponse,
+    TooltipRequest,
+    TooltipResponse,
 )
 from .services import store
 
@@ -34,12 +39,13 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Saju Hub API", version="0.1.0", lifespan=lifespan)
 
+_DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+_cors_raw = os.getenv("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -232,6 +238,24 @@ async def get_read(read_id: str) -> ReadResponse:
     if read is None:
         raise HTTPException(status_code=404, detail="read not found")
     return read
+
+
+@app.post("/api/tooltips", response_model=TooltipResponse)
+async def get_tooltips(payload: TooltipRequest) -> TooltipResponse:
+    try:
+        tooltips = store.get_or_create_tooltips(
+            profile_id=payload.profile_id,
+            terms=payload.terms,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="profile not found") from None
+    return TooltipResponse(tooltips=tooltips)
+
+
+@app.post("/api/events", response_model=EventResponse)
+async def log_event(payload: EventCreateRequest) -> EventResponse:
+    store.log_event(payload)
+    return EventResponse(success=True)
 
 
 @app.post("/api/feedback", response_model=FeedbackResponse)
