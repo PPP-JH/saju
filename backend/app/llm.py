@@ -19,13 +19,27 @@ logger = logging.getLogger(__name__)
 
 class GeminiNarrator:
     def __init__(self) -> None:
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
         self.model = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
         self.timeout_seconds = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "12"))
 
     @property
     def enabled(self) -> bool:
         return bool(self.api_key)
+
+    @staticmethod
+    def _is_model_error(err: APIError) -> bool:
+        response_json = getattr(err, "response_json", {})
+        if isinstance(response_json, dict):
+            status = response_json.get("error", {}).get("status", "")
+            message = response_json.get("error", {}).get("message", "")
+            text = f"{status} {message}".lower()
+        else:
+            text = str(err).lower()
+        return (
+            "model" in text
+            and ("not found" in text or "not supported" in text or "invalid argument" in text)
+        )
 
     @staticmethod
     def _extract_json_text(raw_text: str) -> str:
@@ -156,47 +170,56 @@ class GeminiNarrator:
 
     def generate_result(self, profile: ProfileResponse, feature_type: str, period_key: str) -> dict[str, Any] | None:
         if not self.enabled:
+            logger.warning("Gemini disabled: GEMINI_API_KEY is not set.")
             return None
 
         payload = self._request_payload(profile, feature_type, period_key)
-        print(payload)
         client = self._new_client()
+        model_candidates = [self.model]
+        if self.model != DEFAULT_GEMINI_MODEL:
+            model_candidates.append(DEFAULT_GEMINI_MODEL)
 
-        for _ in range(2):
-            try:
-                response = client.models.generate_content(
-                    model=self.model,
-                    contents=payload["contents"],
-                    config=payload["config"],
-                )
-                text = response.text or ""
-                validated = self.parse_result_text(text)
-                if validated is not None:
-                    return validated
-                logger.warning(
-                    "Gemini non-stream response failed schema validation: feature_type=%s period_key=%s",
-                    feature_type,
-                    period_key,
-                )
-            except APIError as err:
-                logger.error(
-                    "Gemini non-stream API error: status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
-                    getattr(err, "status", getattr(err, "code", "-")),
-                    getattr(err, "response_json", {}).get("error", {}).get("status", "-")
-                    if isinstance(getattr(err, "response_json", {}), dict)
-                    else "-",
-                    feature_type,
-                    period_key,
-                    json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
-                )
-            except Exception as err:
-                logger.error(
-                    "Gemini non-stream unknown error: feature_type=%s period_key=%s error=%s",
-                    feature_type,
-                    period_key,
-                    str(err),
-                )
-                continue
+        for model_name in model_candidates:
+            for _ in range(2):
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=payload["contents"],
+                        config=payload["config"],
+                    )
+                    text = response.text or ""
+                    validated = self.parse_result_text(text)
+                    if validated is not None:
+                        return validated
+                    logger.warning(
+                        "Gemini non-stream response failed schema validation: model=%s feature_type=%s period_key=%s",
+                        model_name,
+                        feature_type,
+                        period_key,
+                    )
+                except APIError as err:
+                    logger.error(
+                        "Gemini non-stream API error: model=%s status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
+                        model_name,
+                        getattr(err, "status", getattr(err, "code", "-")),
+                        getattr(err, "response_json", {}).get("error", {}).get("status", "-")
+                        if isinstance(getattr(err, "response_json", {}), dict)
+                        else "-",
+                        feature_type,
+                        period_key,
+                        json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
+                    )
+                    if self._is_model_error(err):
+                        break
+                except Exception as err:
+                    logger.error(
+                        "Gemini non-stream unknown error: model=%s feature_type=%s period_key=%s error=%s",
+                        model_name,
+                        feature_type,
+                        period_key,
+                        str(err),
+                    )
+                    continue
 
         return None
 
@@ -207,53 +230,62 @@ class GeminiNarrator:
         period_key: str,
     ) -> AsyncIterator[str]:
         if not self.enabled:
+            logger.warning("Gemini stream disabled: GEMINI_API_KEY is not set.")
             return
 
         payload = self._request_payload(profile, feature_type, period_key, stream=True)
         prior_text = ""
         client = self._new_client(stream=True)
+        model_candidates = [self.model]
+        if self.model != DEFAULT_GEMINI_MODEL:
+            model_candidates.append(DEFAULT_GEMINI_MODEL)
 
-        try:
-            stream = await client.aio.models.generate_content_stream(
-                model=self.model,
-                contents=payload["contents"],
-                config=payload["config"],
-            )
-            async for chunk in stream:
-                current_text = chunk.text or ""
-                if not current_text:
-                    continue
+        for model_name in model_candidates:
+            try:
+                stream = await client.aio.models.generate_content_stream(
+                    model=model_name,
+                    contents=payload["contents"],
+                    config=payload["config"],
+                )
+                async for chunk in stream:
+                    current_text = chunk.text or ""
+                    if not current_text:
+                        continue
 
-                if current_text.startswith(prior_text):
-                    delta = current_text[len(prior_text) :]
-                    prior_text = current_text
-                else:
-                    delta = current_text
-                    prior_text += current_text
+                    if current_text.startswith(prior_text):
+                        delta = current_text[len(prior_text) :]
+                        prior_text = current_text
+                    else:
+                        delta = current_text
+                        prior_text += current_text
 
-                if delta:
-                    yield delta
-        except APIError as err:
-            logger.error(
-                "Gemini stream API error: status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
-                getattr(err, "status", getattr(err, "code", "-")),
-                getattr(err, "response_json", {}).get("error", {}).get("status", "-")
-                if isinstance(getattr(err, "response_json", {}), dict)
-                else "-",
-                feature_type,
-                period_key,
-                json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
-            )
-            return
-        except Exception as err:
-            logger.exception(
-                "Gemini stream unknown error: type=%s feature_type=%s period_key=%s repr=%r",
-                type(err).__name__,
-                feature_type,
-                period_key,
-                err,
-            )
-            return
+                    if delta:
+                        yield delta
+                return
+            except APIError as err:
+                logger.error(
+                    "Gemini stream API error: model=%s status=%s remote_status=%s feature_type=%s period_key=%s body=%s",
+                    model_name,
+                    getattr(err, "status", getattr(err, "code", "-")),
+                    getattr(err, "response_json", {}).get("error", {}).get("status", "-")
+                    if isinstance(getattr(err, "response_json", {}), dict)
+                    else "-",
+                    feature_type,
+                    period_key,
+                    json.dumps(getattr(err, "response_json", {}), ensure_ascii=False)[:800],
+                )
+                if not self._is_model_error(err):
+                    return
+            except Exception as err:
+                logger.exception(
+                    "Gemini stream unknown error: model=%s type=%s feature_type=%s period_key=%s repr=%r",
+                    model_name,
+                    type(err).__name__,
+                    feature_type,
+                    period_key,
+                    err,
+                )
+                return
 
 
 narrator = GeminiNarrator()
