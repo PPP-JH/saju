@@ -87,7 +87,6 @@ class DatabaseStore:
     def _hash_profile_input(payload: ProfileCreateRequest) -> str:
         material = "|".join(
             [
-                payload.name.strip().lower(),
                 payload.gender,
                 payload.birth_date,
                 payload.birth_time or "unknown",

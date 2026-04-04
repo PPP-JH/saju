@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as _date
 from datetime import datetime
 from typing import Any, Literal
 
@@ -10,11 +11,21 @@ Gender = Literal["M", "F"]
 
 
 class ProfileCreateRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(default=None, max_length=100)
     gender: Gender
     birth_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     birth_time: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}$")
     is_lunar: bool = False
+
+    @field_validator("birth_date")
+    @classmethod
+    def validate_birth_date(cls, value: str) -> str:
+        year, month, day = map(int, value.split("-"))
+        try:
+            _date(year, month, day)
+        except ValueError as exc:
+            raise ValueError(f"유효하지 않은 날짜: {value}") from exc
+        return value
 
 
 class ProfileCreateResponse(BaseModel):
@@ -70,10 +81,10 @@ class FortuneDetail(BaseModel):
 
 class FortuneResult(BaseModel):
     title: str = Field(min_length=1, max_length=120)
-    summary: str = Field(min_length=1, max_length=500)
+    summary: str = Field(min_length=1, max_length=2000)
     score: int = Field(ge=0, le=100)
-    details: list[FortuneDetail] = Field(min_length=1, max_length=6)
-    actions: list[str] = Field(min_length=1, max_length=5)
+    details: list[FortuneDetail] = Field(min_length=1, max_length=10)
+    actions: list[str] = Field(min_length=1, max_length=12)
 
 
 class FeedbackCreateRequest(BaseModel):
