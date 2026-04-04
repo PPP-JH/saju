@@ -72,21 +72,36 @@ class GeminiNarrator:
             "elements": profile.elements.model_dump(),
             "ten_gods_summary": profile.ten_gods_summary,
         }
-        schema_hint = {
-            "title": "string",
-            "summary": "string",
-            "score": "int(0-100)",
-            "details": [{"subtitle": "string", "content": "string"}],
-            "actions": ["string"],
-        }
         period_label = GeminiNarrator._period_label(feature_type)
-        style_guide = {
-            "tone": [
-                "사주 상담사가 차분하게 흐름을 읽어주는 문체",
-                "단정적 운명론/공포 조장 금지",
-                "사용자 존중형 표현 사용",
-            ],
-            "content_rules": [
+        is_profile = feature_type == "profile_detail"
+
+        if is_profile:
+            schema_hint = {
+                "title": "string — 일간 기질을 한 문장으로 (예: '갑목의 사람, 뻗어나가는 기운')",
+                "summary": "string",
+                "score": 50,
+                "details": [{"subtitle": "string", "content": "string"}],
+                "actions": ["string"],
+            }
+            content_rules = [
+                "summary는 12~18문장. 일간이 어떤 기운인지 → 오행 강약이 삶에 어떤 의미인지 → 십성 분포가 드러내는 기질 패턴 순으로 전개",
+                "details는 6~8개. 각 subtitle은 삶의 테마(기질, 관계, 일, 건강, 재물, 성장 방향 등). content는 4~6문장, 사주 근거를 명시하며 서술",
+                "actions는 8~10개. '이번 주'가 아닌 타임리스 삶의 방향 — '~하는 습관을 들이면 좋다', '~를 경계하라' 형태",
+                "pillars.day[0](일간 천간)을 반드시 특정하고 그 기운의 특성을 풀이의 출발점으로 삼을 것",
+                "오행 중 가장 많은 것과 없거나 적은 것을 반드시 언급하고 그 불균형이 성격/삶에 미치는 영향을 구체적으로 서술",
+                "ten_gods_summary에서 강한 성분을 인용해 기질 해석의 근거로 제시",
+                "시간·날짜·주차·연도 언급 완전 금지 — 이 풀이는 평생 유효한 성격/기질 분석임",
+                "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시",
+            ]
+        else:
+            schema_hint = {
+                "title": "string",
+                "summary": "string",
+                "score": "int(0-100)",
+                "details": [{"subtitle": "string", "content": "string"}],
+                "actions": ["string"],
+            }
+            content_rules = [
                 "summary는 10~15문장, 핵심 흐름 + 구체적 상황 묘사 + 실용 조언을 균형 있게",
                 "details는 6~8개, 각 content는 4~6문장으로 충분히 상세하게 작성",
                 "actions는 8~10개, 바로 실행 가능한 구체적 문장형 조언",
@@ -94,7 +109,15 @@ class GeminiNarrator:
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시",
                 f"period_label('{period_label}')을 활용해 '이번 주에는', '이번 주 흐름은' 등 자연스러운 표현 사용",
                 "'N주차', '2026년 N주', 날짜·주차 번호 직접 언급 금지",
+            ]
+
+        style_guide = {
+            "tone": [
+                "사주 상담사가 차분하게 흐름을 읽어주는 문체",
+                "단정적 운명론/공포 조장 금지",
+                "사용자 존중형 표현 사용",
             ],
+            "content_rules": content_rules,
             "forbidden": [
                 "AI",
                 "모델",
@@ -106,22 +129,33 @@ class GeminiNarrator:
             ],
         }
         feature_hint = {
-            "profile_detail": "타고난 성향과 현재 읽는 법 중심",
+            "profile_detail": (
+                "일간 기질 분석 + 오행 불균형 해석 + 십성 기질 패턴. "
+                "시간에 묶이지 않는 타고난 성격·기질·삶의 패턴을 다룬다. "
+                "운세(이번 주/이번 달)가 아닌 '이 사람은 어떤 사람인가'에 답해야 한다."
+            ),
             "week": "이번 주 전체 흐름 중심",
             "money_week": "재물/소비/저축 의사결정 중심",
             "love_week": "관계의 온도와 소통 중심",
             "work_week": "업무 우선순위와 협업 중심",
         }
-        return (
-            "역할: 사주 허브의 전문 풀이 작성자.\n"
+
+        base_prompt = (
+            "역할: 사주해의 전문 풀이 작성자.\n"
             "목표: 입력된 사주 요약 근거를 바탕으로, 사용자에게 실용적이고 과장 없는 해석을 제공합니다.\n"
             "출력 규칙: 반드시 JSON 객체만 반환하세요. 마크다운/코드펜스/설명 문장 금지.\n"
             "문체 규칙: 'AI/모델' 등 구현 언급 금지, 단정적 예언 금지, 위로/조언 중심.\n"
             f"feature_type: {feature_type}\n"
             f"feature_focus: {feature_hint.get(feature_type, '현재 기간의 핵심 흐름 중심')}\n"
-            f"period_label: {period_label}\n"
-            "period_label_usage: summary/details/actions에서 시간 표현이 필요할 때 반드시 period_label 값만 사용하세요. '주차', '월', 연도·숫자 형식의 날짜 직접 언급 금지.\n"
-            f"profile: {json.dumps(profile_payload, ensure_ascii=False)}\n"
+        )
+        if not is_profile:
+            base_prompt += (
+                f"period_label: {period_label}\n"
+                "period_label_usage: summary/details/actions에서 시간 표현이 필요할 때 반드시 period_label 값만 사용하세요. '주차', '월', 연도·숫자 형식의 날짜 직접 언급 금지.\n"
+            )
+        return (
+            base_prompt
+            + f"profile: {json.dumps(profile_payload, ensure_ascii=False)}\n"
             f"style_guide: {json.dumps(style_guide, ensure_ascii=False)}\n"
             f"output_schema: {json.dumps(schema_hint, ensure_ascii=False)}"
         )
@@ -232,7 +266,7 @@ class GeminiNarrator:
             "ten_gods_summary": profile.ten_gods_summary,
         }
         return (
-            "역할: 사주 허브 용어 해설 작성자.\n"
+            "역할: 사주해 용어 해설 작성자.\n"
             "목표: 아래 사주 용어 목록 각각을 이 사용자의 사주 맥락에 맞게 2문장으로 설명합니다.\n"
             "출력 규칙: JSON 객체만 반환하세요. 형식: {\"용어\": \"설명...\"}\n"
             "문체 규칙: 전문적이지만 쉽게, 사용자 맥락 중심, 마크다운 금지.\n"

@@ -19,9 +19,11 @@ function LoadingSkeleton() {
   return (
     <div className={styles.tabContainer}>
       <Card className={styles.scoreCard}>
-        <div className={styles.skeletonScoreCircle} />
-        <SkeletonLine width="60%" />
-        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
+          <SkeletonLine width="50%" />
+          <SkeletonLine width="15%" />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <SkeletonLine />
           <SkeletonLine />
           <SkeletonLine width="80%" />
@@ -58,11 +60,11 @@ export default function FortuneTab({ data, streamLoading, streamError }: Fortune
 
   return (
     <div className={styles.tabContainer}>
-      {/* 점수 + 제목 */}
+      {/* 제목 + 요약 + 점수(서브) */}
       <Card className={styles.scoreCard}>
         <div className={styles.scoreHeader}>
-          <div className={styles.scoreValue}>{data.score}<span>점</span></div>
           <h2 className={styles.scoreTitle}>{data.title}</h2>
+          <div className={styles.scoreValue}>{data.score}<span>점</span></div>
         </div>
 
         {/* 요약 본문 */}

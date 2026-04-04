@@ -28,7 +28,7 @@ export default function ExploreIndex() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <Link href="/" className={styles.logo}>사주 허브</Link>
+                <Link href="/" className={styles.logo}>사주해</Link>
                 <nav className={styles.nav}>
                     <Link href="/input">내 사주 보기</Link>
                     <Link href="/learn">사주 상식</Link>
@@ -41,7 +41,7 @@ export default function ExploreIndex() {
                     <p className={styles.subtitle}>
                         개인정보 입력이 부담스러우신가요?
                         <br />
-                        아래의 가상 샘플 프로필을 통해 사주 허브의 풀이 시스템을 미리 체험해보세요.
+                        아래의 가상 샘플 프로필을 통해 사주해의 풀이 시스템을 미리 체험해보세요.
                     </p>
                 </div>
 

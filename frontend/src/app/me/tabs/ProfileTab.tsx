@@ -50,6 +50,53 @@ export default function ProfileTab({
 
   return (
     <div className={styles.tabContainer}>
+      {/* ── 사주 풀이 (최상단) ── */}
+      {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
+
+      {!streamError && !streamResult && streamLoading && (
+        <Card className={styles.llmStreamCard}>
+          <p className={styles.streamHintText}>사주의 기운을 읽는 중입니다...</p>
+        </Card>
+      )}
+
+      {!streamError && streamResult && (
+        <div className={styles.tabContainer}>
+          <h2 className={styles.sectionTitle}>{streamResult.title}</h2>
+          <p className={styles.streamingText}>{streamResult.summary}</p>
+
+          {streamResult.details.length > 0 && (
+            <div className={styles.detailsList}>
+              {streamResult.details.map((item, i) => (
+                <Card key={`${item.subtitle}-${i}`} className={styles.detailCard}>
+                  <div className={styles.detailIndex}>{i + 1}</div>
+                  <div className={styles.detailContent}>
+                    <h4 className={styles.detailSubTitle}>{item.subtitle}</h4>
+                    <p className={styles.detailText}>{item.content}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {streamResult.actions.length > 0 && (
+            <>
+              <h3 className={styles.sectionSubTitle}>삶의 방향</h3>
+              <div className={styles.actionsList}>
+                {streamResult.actions.map((act, i) => (
+                  <div key={`${act}-${i}`} className={styles.actionItem}>
+                    <div className={styles.checkIcon}>✓</div>
+                    <span>{act}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className={styles.divider} />
+
+      {/* ── 명식 (풀이의 근거) ── */}
       <header className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>명식 (사주 8자)</h2>
         <p className={styles.sectionDesc}>
@@ -115,34 +162,6 @@ export default function ProfileTab({
           </Card>
         ))}
       </div>
-
-      <div className={styles.divider} />
-
-      <header className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>실시간 사주 풀이</h2>
-        <p className={styles.sectionDesc}>
-          사주의 흐름을 읽어가는 과정을 실시간으로 확인할 수 있습니다.
-        </p>
-      </header>
-
-      <Card className={styles.llmStreamCard}>
-        {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
-        {!streamError && !streamText && streamLoading && (
-          <p className={styles.streamHintText}>사주의 흐름을 살피는 중입니다...</p>
-        )}
-        {!!streamText && (
-          <p className={styles.streamingText}>
-            {streamText}
-            {streamLoading && <span className={styles.cursor} />}
-          </p>
-        )}
-        {streamResult && (
-          <div className={styles.streamDoneBlock}>
-            <h3 className={styles.streamDoneTitle}>{streamResult.title}</h3>
-            <p className={styles.streamDoneSummary}>{streamResult.summary}</p>
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

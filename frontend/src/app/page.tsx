@@ -1,67 +1,64 @@
 import styles from "./page.module.css";
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export default function Home() {
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.logo}>사주 허브</div>
+      <SiteHeader right={
         <nav className={styles.nav}>
           <Link href="/input">내 사주 보기</Link>
           <Link href="/learn">사주 상식</Link>
-          <Link href="/explore">둘러보기</Link>
+          <Link href="/glossary">용어 사전</Link>
         </nav>
-      </header>
+      } />
 
       <main className={styles.main}>
-        <div className={styles.hero}>
-          <div className={styles.badge}>새로운 운세 경험</div>
-          <h1 className={styles.title}>
-            어렵기만 했던 사주를<br />
-            <span className={styles.highlight}>내 손으로 읽다</span>
+        <section className={styles.editorial}>
+          <p className={styles.eyebrow}>사주 풀이 · 인라인 해설</p>
+
+          <h1 className={styles.display}>
+            당신이 태어난 순간,<br />
+            하늘과 땅이 교차하며<br />
+            사주팔자가 세워졌습니다.
           </h1>
-          <p className={styles.subtitle}>
-            당신의 고유한 흐름을 풀이해 드립니다.<br />초보자도 쉽게 이해할 수 있는 친절한 용어 설명과 함께하세요.
+
+          <p className={styles.body}>
+            우리는 그것이 무엇을 의미하는지<br />
+            — 왜 그런지까지 — 설명합니다.
           </p>
 
-          <div className={styles.ctaGroup}>
+          <p className={styles.bodyMuted}>
+            일간(日干), 오행(五行), 십성(十星).
+            결과만 전달하는 것이 아니라, 풀이 안의 모든 용어에
+            인라인 해설이 붙습니다. 사주를 처음 접하는 분도
+            읽으면서 이해할 수 있습니다.
+          </p>
+
+          <div className={styles.ctaRow}>
             <Link href="/input" className={styles.primaryBtn}>
-              내 사주 보기
+              내 사주 풀이 보기 →
             </Link>
-            <Link href="/learn" className={styles.secondaryBtn}>
-              재미로 보는 사주 상식
-            </Link>
-            <Link href="/explore" className={styles.ghostBtn}>
-              예시로 둘러보기
+            <Link href="/learn" className={styles.ghostLink}>
+              사주 상식 보기
             </Link>
           </div>
-        </div>
+        </section>
 
-        <section className={styles.features}>
-          <div className={styles.featureGrid}>
-            <Card className={styles.featureCard}>
-              <div className={styles.iconWrapper}>✨</div>
-              <h3 className={styles.cardTitle}>초보자를 위한 쉬운 풀이</h3>
-              <p className={styles.cardDesc}>
-                비견, 십성, 간지... 복잡한 용어는 그만! 클릭 한 번으로 제공되는 친절한 툴팁과 함께 당신의 사주를 바로 이해해보세요.
-              </p>
-            </Card>
-            <Card className={styles.featureCard}>
-              <div className={styles.iconWrapper}>📅</div>
-              <h3 className={styles.cardTitle}>매주 업데이트 되는 운세</h3>
-              <p className={styles.cardDesc}>
-                단 한 번의 사주 분석으로 끝나는 것이 아닙니다. 이번 주 재물운, 애정운, 직장운 등 주기적인 혜택을 제공합니다.
-              </p>
-            </Card>
-            <Card className={styles.featureCard}>
-              <div className={styles.iconWrapper}>📚</div>
-              <div className={styles.featureContent}>
-                <h3 className={styles.featureTitle}>재미로 보는 사주 상식</h3>
-                <p className={styles.featureDesc}>
-                  내 사주를 재미있게 읽고 싶다면 가벼운 사주 상식과 용어 사전을 활용하여 직접 확인해볼 수 있습니다.
-                </p>
-              </div></Card>
+        <div className={styles.divider} />
+
+        <section className={styles.proofRow}>
+          <div className={styles.proofItem}>
+            <span className={styles.proofNum}>3,000년</span>
+            <span className={styles.proofLabel}>명리학 전통</span>
+          </div>
+          <div className={styles.proofItem}>
+            <span className={styles.proofNum}>왜까지</span>
+            <span className={styles.proofLabel}>결과가 아닌 이유</span>
+          </div>
+          <div className={styles.proofItem}>
+            <span className={styles.proofNum}>무료</span>
+            <span className={styles.proofLabel}>계정 없이 바로</span>
           </div>
         </section>
       </main>

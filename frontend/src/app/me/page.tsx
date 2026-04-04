@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SiteHeader } from '@/components/SiteHeader';
 import {
   getCurrentWeekKey,
   getProfile,
@@ -202,7 +202,6 @@ function MySajuHub() {
   if (loadingProfile) {
     return (
       <div className={styles.loadingContainer}>
-        <div className={styles.spinner} />
         <p className={styles.loadingText}>운명의 지도를 펼치는 중...</p>
       </div>
     );
@@ -223,12 +222,7 @@ function MySajuHub() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.logo}>사주 허브</Link>
-        <button onClick={() => alert('공유하기 기능은 준비 중입니다.')} className={styles.iconBtn}>
-          공유
-        </button>
-      </header>
+      <SiteHeader />
 
       <main className={styles.main}>
         <section className={styles.summaryHeader}>
@@ -288,7 +282,6 @@ export default function MySajuHubPage() {
   return (
     <Suspense fallback={
       <div className={styles.loadingContainer}>
-        <div className={styles.spinner} />
         <p className={styles.loadingText}>운명의 지도를 펼치는 중...</p>
       </div>
     }>

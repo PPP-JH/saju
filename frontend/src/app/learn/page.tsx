@@ -14,7 +14,7 @@ export default function LearnIndex() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <Link href="/" className={styles.logo}>사주 허브</Link>
+                <Link href="/" className={styles.logo}>사주해</Link>
                 <nav className={styles.nav}>
                     <Link href="/me">내 사주</Link>
                     <Link href="/glossary">용어사전</Link>

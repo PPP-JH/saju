@@ -5,16 +5,6 @@
     background-color: var(--bg-card-hover);
 }
 
-.header {
-    padding: 1.5rem 2rem;
-}
-
-.logo {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    letter-spacing: -0.5px;
-}
 
 .main {
     flex: 1;
@@ -118,6 +108,12 @@
     font-size: 0.8125rem;
     color: var(--text-muted);
     margin-top: 0.25rem;
+}
+
+.optionalLabel {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--text-muted);
 }
 
 .submitWrapper {

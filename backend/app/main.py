@@ -157,7 +157,15 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
             ):
                 raw_text += delta
                 has_delta = True
-                yield _to_sse(event="delta", data={"text": delta})
+                clean_delta = (
+                    delta
+                    .replace("```json\n", "")
+                    .replace("```json", "")
+                    .replace("```\n", "")
+                    .replace("```", "")
+                )
+                if clean_delta:
+                    yield _to_sse(event="delta", data={"text": clean_delta})
         except Exception:
             logger.exception(
                 "Read stream narration iteration failed: profile_id=%s feature_type=%s period_key=%s",

@@ -4,10 +4,10 @@ import ReadingClient from './ReadingClient';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
-  title: '내 운세 풀이 | 사주 허브',
+  title: '내 운세 풀이 | 사주해',
   description: '사주 팔자 기반 AI 운세 풀이. 내 사주의 흐름을 지금 확인해보세요.',
   openGraph: {
-    title: '내 운세 풀이 | 사주 허브',
+    title: '내 운세 풀이 | 사주해',
     description: '사주 팔자 기반 AI 운세 풀이. 내 사주의 흐름을 지금 확인해보세요.',
     images: ['/og-reading.png'],
   },

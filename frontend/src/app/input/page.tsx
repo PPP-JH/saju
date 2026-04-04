@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SelectBox } from '@/components/ui/SelectBox';
+import { SiteHeader } from '@/components/SiteHeader';
 import { createProfile } from '@/lib/api';
 import styles from './page.module.css';
 
@@ -94,9 +94,7 @@ export default function InputPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.logo}>사주 허브</Link>
-      </header>
+      <SiteHeader />
 
       <main className={styles.main}>
         <div className={styles.pageHeader}>
@@ -106,44 +104,6 @@ export default function InputPage() {
 
         <Card className={styles.formCard}>
           <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.formGroup}>
-              <label htmlFor="name" className={styles.label}>이름 또는 닉네임</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                className={styles.input}
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="홍길동"
-                required
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>성별</label>
-              <div className={styles.radioGroup}>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="M"
-                    checked={formData.gender === 'M'}
-                    onChange={handleChange}
-                  /> 남성
-                </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="F"
-                    checked={formData.gender === 'F'}
-                    onChange={handleChange}
-                  /> 여성
-                </label>
-              </div>
-            </div>
-
             <div className={styles.formGroup}>
               <label className={styles.label}>생년월일</label>
               <div className={styles.dateSelectorRow}>
@@ -195,6 +155,43 @@ export default function InputPage() {
               <span className={styles.hint}>정확한 시간을 모를 경우 비워두셔도 됩니다 (3주 풀이로 자동 변환)</span>
             </div>
 
+            <div className={styles.formGroup}>
+              <label className={styles.label}>성별</label>
+              <div className={styles.radioGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="M"
+                    checked={formData.gender === 'M'}
+                    onChange={handleChange}
+                  /> 남성
+                </label>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="F"
+                    checked={formData.gender === 'F'}
+                    onChange={handleChange}
+                  /> 여성
+                </label>
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="name" className={styles.label}>이름 또는 닉네임 <span className={styles.optionalLabel}>(선택)</span></label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                className={styles.input}
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="홍길동"
+              />
+            </div>
+
             {error && <p className={styles.errorText}>{error}</p>}
 
             <div className={styles.submitWrapper}>
@@ -205,7 +202,6 @@ export default function InputPage() {
                 className={styles.submitBtn}
                 disabled={
                   loading ||
-                  !formData.name ||
                   !formData.birth_year ||
                   !formData.birth_month ||
                   !formData.birth_day

@@ -1,40 +1,40 @@
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --secondary: #0ea5e9;
-  
-  --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --text-muted: #64748b;
-  
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --background:    #F5F0E8;
+  --foreground:    #1A1410;
+
+  --primary:       #C0392B;
+  --primary-hover: #D94F40;
+  --secondary:     #D4936A;
+
+  --bg-card:       #FDFAF4;
+  --bg-card-hover: #F0E6D3;
+  --border:        #D4C5A9;
+  --text-muted:    #6B5E4E;
+
+  --radius-sm:     0.125rem;
+  --radius-md:     0.25rem;
+  --radius-lg:     0.25rem;
+
+  --shadow-sm:     0 1px 2px 0 rgb(26 20 16 / 0.06);
+  --shadow-md:     0 4px 12px -2px rgb(26 20 16 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-    
-    --primary: #6366f1;
-    --primary-hover: #818cf8;
-    --secondary: #38bdf8;
-    
-    --bg-card: #18181b;
-    --bg-card-hover: #27272a;
-    --border: #27272a;
-    --text-muted: #a1a1aa;
-    
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --background:    #12100E;
+    --foreground:    #F5F0E8;
+
+    --primary:       #D94F40;
+    --primary-hover: #E86553;
+    --secondary:     #C4834A;
+
+    --bg-card:       #1E1B17;
+    --bg-card-hover: #2A2520;
+    --border:        #2E2A24;
+    --text-muted:    #9E8E7A;
+
+    --shadow-sm:     0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md:     0 4px 12px -2px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -46,12 +46,13 @@
 
 body {
   background-color: var(--background);
+  /* 한지 그레인 텍스처 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: "Pretendard", var(--font-pretendard), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.6;
 }
 
 a {

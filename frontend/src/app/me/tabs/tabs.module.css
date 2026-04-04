@@ -69,8 +69,7 @@
 }
 
 .pillarCol.isMe {
-    background: rgba(79, 70, 229, 0.05);
-    /* primary slightly transparent */
+    background: rgba(192, 57, 43, 0.04);
     border: 1px solid var(--primary);
 }
 
@@ -175,7 +174,7 @@
 }
 
 .badgeStrong {
-    background: rgba(79, 70, 229, 0.1);
+    background: rgba(192, 57, 43, 0.08);
     color: var(--primary);
     font-weight: bold;
 }
@@ -194,28 +193,30 @@
 
 .scoreHeader {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.scoreValue {
-    font-size: 4rem;
-    font-weight: 900;
-    color: var(--primary);
-    line-height: 1;
-}
-
-.scoreValue span {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-muted);
+    margin-bottom: 1rem;
 }
 
 .scoreTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    flex: 1;
+}
+
+.scoreValue {
     font-size: 1.5rem;
     font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.scoreValue span {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
 }
 
 .summaryText {

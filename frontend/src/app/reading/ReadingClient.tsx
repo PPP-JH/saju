@@ -167,7 +167,7 @@ export default function ReadingClient() {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link href="/" className={styles.logo}>사주 허브</Link>
+          <Link href="/" className={styles.logo}>사주해</Link>
         </header>
         <main className={styles.main}>
           <div className={styles.centerBox}>
@@ -183,7 +183,7 @@ export default function ReadingClient() {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link href="/" className={styles.logo}>사주 허브</Link>
+          <Link href="/" className={styles.logo}>사주해</Link>
         </header>
         <main className={styles.main}>
           <div className={styles.centerBox}>
@@ -199,7 +199,7 @@ export default function ReadingClient() {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link href="/" className={styles.logo}>사주 허브</Link>
+          <Link href="/" className={styles.logo}>사주해</Link>
         </header>
         <main className={styles.main}>
           <div className={styles.streamBox}>
@@ -213,7 +213,7 @@ export default function ReadingClient() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <Link href="/" className={styles.logo}>사주 허브</Link>
+        <Link href="/" className={styles.logo}>사주해</Link>
       </header>
 
       <main className={styles.main}>
