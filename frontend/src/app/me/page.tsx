@@ -285,10 +285,10 @@ function MySajuHub() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'profile', label: '사주 풀이' },
-    { id: 'week', label: '이번 주' },
-    { id: 'money', label: '재물운' },
-    { id: 'love', label: '애정운' },
-    { id: 'work', label: '직장운' },
+    { id: 'week', label: '이번 주 흐름' },
+    { id: 'money', label: '재물' },
+    { id: 'love', label: '관계' },
+    { id: 'work', label: '직업' },
     { id: 'learn', label: '사주 상식' },
   ];
 

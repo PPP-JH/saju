@@ -78,7 +78,7 @@ class GeminiNarrator:
 
         if is_profile:
             schema_hint = {
-                "title": "string — 일간 기질을 한 문장으로 (예: '갑목의 사람, 뻗어나가는 기운')",
+                "title": "string — 이 사람을 한 문장으로 (예: '뻗어나가는 기운, 멈추지 않는 사람'). '기질' 단어 사용 금지.",
                 "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
                 "score": 50,
                 "details": [{"subtitle": "string", "content": "string"}],
@@ -86,7 +86,7 @@ class GeminiNarrator:
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
-                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]일간 기질을 한 문장으로[/TITLE]",
+                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이 사람을 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
                 "  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 일간 기운 → 오행 강약 → 십성 기질 패턴 순으로 자연스럽게 서술. 마크다운/JSON 문법 금지. 사용자가 실시간으로 읽는 텍스트다.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
@@ -99,9 +99,14 @@ class GeminiNarrator:
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
             ]
         elif feature_type in ("money", "love", "work"):
-            _domain = {"money": "재물·돈", "love": "관계·애정", "work": "직업·일"}[feature_type]
+            _domain = {"money": "재물·돈", "love": "관계·사람", "work": "직업·일"}[feature_type]
+            _title_ex = {
+                "money": "'불꽃처럼 벌고 바람처럼 쓰는 사람'",
+                "love": "'가까울수록 뜨겁고, 멀어질수록 서운한 사람'",
+                "work": "'혼자 빛날 때 가장 강한 사람'",
+            }[feature_type]
             schema_hint = {
-                "title": f"string — {_domain} 기질을 한 문장으로",
+                "title": f"string — 이 사람과 {_domain}의 관계를 한 문장으로 (예: {_title_ex}). '기질' 단어 사용 금지.",
                 "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
                 "score": 50,
                 "details": [{"subtitle": "string", "content": "string"}],
@@ -109,7 +114,7 @@ class GeminiNarrator:
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
-                f"  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]{_domain} 기질을 한 문장으로[/TITLE]",
+                f"  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이 사람과 {_domain}의 관계를 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
                 f"  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 이 사람의 {_domain} 기질·패턴·강약점을 팔자 근거로 서술. 마크다운/JSON 문법 금지.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
@@ -121,7 +126,7 @@ class GeminiNarrator:
             ]
         else:
             schema_hint = {
-                "title": "string — 이번 주 핵심 기운을 한 문장으로",
+                "title": "string — 이번 주 흐름을 한 문장으로 (예: '멈추고 고르는 주'). '기질' 단어 사용 금지.",
                 "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
                 "score": "int(0-100)",
                 "details": [{"subtitle": "string", "content": "string"}],
@@ -129,7 +134,7 @@ class GeminiNarrator:
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
-                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이번 주 핵심을 한 문장으로[/TITLE]",
+                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이번 주 흐름을 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
                 "  [1단계: 산문 풀이] 타이틀 다음 줄부터 10~15문장의 한국어 산문. 핵심 흐름 + 구체적 상황 묘사 + 실용 조언. 마크다운/JSON 문법 금지.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
