@@ -195,9 +195,9 @@ class GeminiNarrator:
         max_tokens_map = {
             "profile_detail": 8192,
             "week": 8192,
-            "money_week": 8192,
-            "love_week": 8192,
-            "work_week": 8192,
+            "money": 8192,
+            "love": 8192,
+            "work": 8192,
         }
         config_kwargs: dict[str, Any] = {
             "temperature": 0.4,
