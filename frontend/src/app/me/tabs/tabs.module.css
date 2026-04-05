@@ -237,9 +237,32 @@
     font-size: 1.125rem;
     font-weight: 700;
     color: var(--foreground);
+}
+
+.fortuneNarrativeHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border);
+}
+
+.scoreBadge {
+    font-family: var(--font-display), serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.scoreBadge span {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 0.15em;
 }
 
 .streamingText {
