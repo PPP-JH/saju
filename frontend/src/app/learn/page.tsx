@@ -1,17 +1,31 @@
-'use client';
-import { Card } from '@/components/ui/Card';
+import React from 'react';
 import Link from 'next/link';
+import { Card } from '@/components/ui/Card';
 import { SiteHeader } from '@/components/SiteHeader';
 import styles from './page.module.css';
 
-export default function LearnIndex() {
-    const lessons = [
-        { id: 'intro', title: '1. 내 사주는 왜 이럴까?', desc: '사주의 원리와 생년월일시가 숨기고 있는 재미있는 비밀들' },
-        { id: 'pillars', title: '2. 8글자의 운명 바코드', desc: '네 개의 기둥(사주)과 여덟 개의 글자가 무슨 뜻일까?' },
-        { id: 'elements', title: '3. 나무, 불, 물의 티키타카', desc: '내 사주에 물이 많으면? 오행의 상생상극 썰' },
-        { id: 'ten-gods', title: '4. 내안의 숨겨진 성격 테스트', desc: '비견, 식상, 재성... 나도 몰랐던 나의 사회적 캐릭터' },
-    ];
+const lessons = [
+    {
+        id: 'intro',
+        eyebrow: '01',
+        title: '내 사주는 왜 이럴까?',
+        desc: '사주의 원리와 2,500년의 역사. 생년월일시가 기질을 읽는 도구가 된 이유.',
+    },
+    {
+        id: 'pillars',
+        eyebrow: '02',
+        title: '8글자의 운명 바코드',
+        desc: '4기둥·8글자가 무엇인지, 일간이 왜 기준점인지, 만세력과 절기의 차이.',
+    },
+    {
+        id: 'ten-gods',
+        eyebrow: '03',
+        title: '내 안의 숨겨진 성격',
+        desc: '비겁·식상·재성·관성·인성 — 십성으로 읽는 나의 사회적 캐릭터.',
+    },
+];
 
+export default function LearnIndex() {
     return (
         <div className={styles.container}>
             <SiteHeader right={
@@ -22,22 +36,25 @@ export default function LearnIndex() {
             } />
             <main className={styles.main}>
                 <div className={styles.hero}>
-                    <h1 className={styles.title}>재미있는 사주 상식</h1>
-                    <p className={styles.subtitle}>가볍게 읽고 끄덕이는 사주 이야기. 내 사주의 비밀을 파헤쳐보세요!</p>
+                    <h1 className={styles.title}>사주 상식</h1>
+                    <p className={styles.subtitle}>명리학의 핵심을 가볍게 읽습니다.</p>
                 </div>
                 <div className={styles.lessonList}>
                     {lessons.map(ls => (
-                        <Card key={ls.id} className={styles.lessonCard}>
-                            <div className={styles.lessonContent}>
-                                <h2 className={styles.lessonTitle}>{ls.title}</h2>
-                                <p className={styles.lessonDesc}>{ls.desc}</p>
-                            </div>
-                            <button className={styles.readBtn} onClick={() => alert('조만간 재미있는 코너가 추가됩니다!')}>읽어보기</button>
-                        </Card>
+                        <Link key={ls.id} href={`/learn/${ls.id}`} style={{ display: 'block' }}>
+                            <Card className={styles.lessonCard}>
+                                <div className={styles.lessonContent}>
+                                    <p className={styles.lessonEyebrow}>{ls.eyebrow}</p>
+                                    <h2 className={styles.lessonTitle}>{ls.title}</h2>
+                                    <p className={styles.lessonDesc}>{ls.desc}</p>
+                                </div>
+                                <span className={styles.readBtn}>읽기 →</span>
+                            </Card>
+                        </Link>
                     ))}
                 </div>
                 <div className={styles.bottomLink}>
-                    궁금한 단어가 있다면 언제든 열어보세요! <Link href="/glossary" className={styles.linkText}>용어사전 보러가기 →</Link>
+                    용어가 궁금하다면 <Link href="/glossary" className={styles.linkText}>용어사전 →</Link>
                 </div>
             </main>
         </div>
