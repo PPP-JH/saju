@@ -23,8 +23,8 @@ export default function Glossary() {
         <div className={styles.container}>
             <SiteHeader right={
                 <nav className={styles.nav}>
-                    <Link href="/me">내 사주</Link>
-                    <Link href="/learn">사주 상식</Link>
+                    <Link href="/saju">내 사주</Link>
+                    <Link href="/story">사주 상식</Link>
                 </nav>
             } />
             <main className={styles.main}>

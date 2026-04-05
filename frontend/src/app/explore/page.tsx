@@ -31,7 +31,7 @@ export default function ExploreIndex() {
             <SiteHeader right={
                 <nav className={styles.nav}>
                     <Link href="/input">내 사주 보기</Link>
-                    <Link href="/learn">사주 상식</Link>
+                    <Link href="/story">사주 상식</Link>
                 </nav>
             } />
 
@@ -58,7 +58,7 @@ export default function ExploreIndex() {
                                 <p className={styles.sampleDesc}>{sample.desc}</p>
                             </div>
                             <div className={styles.action}>
-                                <Link href="/me">
+                                <Link href="/saju">
                                     <Button variant="primary">결과 페이지 체험하기</Button>
                                 </Link>
                             </div>

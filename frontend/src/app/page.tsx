@@ -8,7 +8,7 @@ export default function Home() {
       <SiteHeader right={
         <nav className={styles.nav}>
           <Link href="/input">내 사주 보기</Link>
-          <Link href="/learn">사주 상식</Link>
+          <Link href="/story">사주 상식</Link>
           <Link href="/glossary">용어 사전</Link>
         </nav>
       } />
@@ -39,7 +39,7 @@ export default function Home() {
             <Link href="/input" className={styles.primaryBtn}>
               내 사주 풀이 보기 →
             </Link>
-            <Link href="/learn" className={styles.ghostLink}>
+            <Link href="/story" className={styles.ghostLink}>
               사주 상식 보기
             </Link>
           </div>
@@ -56,8 +56,16 @@ export default function Home() {
             <span className={styles.proofNum}>왜까지</span>
             <span className={styles.proofLabel}>결과가 아닌 이유</span>
           </div>
+          <div className={styles.proofItem}>
+            <span className={styles.proofNum}>처음도</span>
+            <span className={styles.proofLabel}>읽으면 이해</span>
+          </div>
         </section>
       </main>
+
+      <footer className={styles.footer}>
+        <Link href="/privacy" className={styles.footerLink}>개인정보처리방침</Link>
+      </footer>
     </div>
   );
 }

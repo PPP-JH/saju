@@ -8,7 +8,7 @@ export default function LearnPillars() {
         <div className={styles.container}>
             <SiteHeader />
             <main className={styles.main}>
-                <Link href="/learn" className={styles.backLink}>← 사주 상식으로</Link>
+                <Link href="/story" className={styles.backLink}>← 사주 상식으로</Link>
 
                 <div className={styles.hero}>
                     <p className={styles.eyebrow}>사주 상식 02</p>

@@ -146,6 +146,26 @@
   color: var(--text-muted);
 }
 
+/* ── Footer ── */
+
+.footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footerLink {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.footerLink:hover {
+  color: var(--foreground);
+}
+
 /* ── Mobile ── */
 
 @media (max-width: 640px) {

@@ -30,7 +30,7 @@ export default function LearnIndex() {
         <div className={styles.container}>
             <SiteHeader right={
                 <nav className={styles.nav}>
-                    <Link href="/me">내 사주</Link>
+                    <Link href="/saju">내 사주</Link>
                     <Link href="/glossary">용어사전</Link>
                 </nav>
             } />
@@ -41,7 +41,7 @@ export default function LearnIndex() {
                 </div>
                 <div className={styles.lessonList}>
                     {lessons.map(ls => (
-                        <Link key={ls.id} href={`/learn/${ls.id}`} style={{ display: 'block' }}>
+                        <Link key={ls.id} href={`/story/${ls.id}`} style={{ display: 'block' }}>
                             <Card className={styles.lessonCard}>
                                 <div className={styles.lessonContent}>
                                     <p className={styles.lessonEyebrow}>{ls.eyebrow}</p>

@@ -336,7 +336,7 @@ function MySajuHub() {
                 className={`${styles.tabBtn} ${activeTab === tab.id ? styles.activeTab : ''}`}
                 onClick={() => {
                   if (tab.id === 'learn') {
-                    router.push('/learn');
+                    router.push('/story');
                   } else {
                     setActiveTab(tab.id);
                   }
