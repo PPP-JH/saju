@@ -42,6 +42,7 @@ function MySajuHub() {
   const [profileStreamLoading, setProfileStreamLoading] = useState(false);
   const [profileStreamError, setProfileStreamError] = useState<string | null>(null);
   const [profileStreamResult, setProfileStreamResult] = useState<StreamDonePayload | null>(null);
+  const [profileStreamTitle, setProfileStreamTitle] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [fortuneByTab, setFortuneByTab] = useState<FortuneMap>({});
@@ -50,6 +51,9 @@ function MySajuHub() {
   const [fortuneStreamErrorByTab, setFortuneStreamErrorByTab] = useState<FortuneStreamErrorMap>({});
   const profileStreamLoadingRef = useRef(profileStreamLoading);
   const fortuneStreamLoadingByTabRef = useRef(fortuneStreamLoadingByTab);
+  const profileStreamQueueRef = useRef('');
+  const profileTypewriterRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingProfileResultRef = useRef<StreamDonePayload | null>(null);
 
   profileStreamLoadingRef.current = profileStreamLoading;
   fortuneStreamLoadingByTabRef.current = fortuneStreamLoadingByTab;
@@ -89,11 +93,38 @@ function MySajuHub() {
     if (!profile || activeTab !== 'profile' || profileStreamResult || profileStreamLoadingRef.current) {
       return;
     }
+    profileStreamLoadingRef.current = true; // synchronous guard — prevents StrictMode double-fire
 
     const controller = new AbortController();
+    profileStreamQueueRef.current = '';
+    pendingProfileResultRef.current = null;
     setProfileStreamText('');
+    setProfileStreamTitle(null);
     setProfileStreamError(null);
     setProfileStreamLoading(true);
+
+    // Typewriter: drain queue at ~60 chars/sec regardless of SSE delivery speed
+    const CHARS_PER_TICK = 3;
+    const TICK_MS = 50;
+    profileTypewriterRef.current = setInterval(() => {
+      const queue = profileStreamQueueRef.current;
+      if (queue.length > 0) {
+        const chunk = queue.slice(0, CHARS_PER_TICK);
+        profileStreamQueueRef.current = queue.slice(CHARS_PER_TICK);
+        setProfileStreamText((prev) => prev + chunk);
+      } else if (pendingProfileResultRef.current) {
+        // Queue drained and done payload waiting — finalize
+        const pending = pendingProfileResultRef.current;
+        pendingProfileResultRef.current = null;
+        if (profileTypewriterRef.current) {
+          clearInterval(profileTypewriterRef.current);
+          profileTypewriterRef.current = null;
+        }
+        setProfileStreamResult(pending);
+        setProfileStreamLoading(false);
+        profileStreamLoadingRef.current = false;
+      }
+    }, TICK_MS);
 
     void streamRead(
       {
@@ -102,23 +133,36 @@ function MySajuHub() {
         period_key: currentWeekKey,
       },
       {
+        onTitle: (title) => {
+          setProfileStreamTitle(title);
+        },
         onDelta: (text) => {
-          setProfileStreamText((prev) => prev + text);
+          profileStreamQueueRef.current += text;
         },
         onDone: (donePayload) => {
-          setProfileStreamResult(donePayload);
-          setProfileStreamLoading(false);
+          // Don't finalize yet — let typewriter drain the queue first
+          pendingProfileResultRef.current = donePayload;
         },
         onError: (message) => {
+          if (profileTypewriterRef.current) {
+            clearInterval(profileTypewriterRef.current);
+            profileTypewriterRef.current = null;
+          }
           setProfileStreamError(message);
           setProfileStreamLoading(false);
+          profileStreamLoadingRef.current = false;
         },
       },
       controller.signal,
     )
       .catch((err) => {
         if (!controller.signal.aborted) {
+          if (profileTypewriterRef.current) {
+            clearInterval(profileTypewriterRef.current);
+            profileTypewriterRef.current = null;
+          }
           setProfileStreamError(err instanceof Error ? err.message : '스트리밍 호출에 실패했습니다.');
+          profileStreamLoadingRef.current = false;
         }
       })
       .finally(() => {
@@ -127,6 +171,11 @@ function MySajuHub() {
 
     return () => {
       controller.abort();
+      if (profileTypewriterRef.current) {
+        clearInterval(profileTypewriterRef.current);
+        profileTypewriterRef.current = null;
+      }
+      profileStreamLoadingRef.current = false; // synchronous reset on cleanup
     };
   }, [activeTab, currentWeekKey, profile, profileStreamResult]);
 
@@ -262,6 +311,7 @@ function MySajuHub() {
               streamLoading={profileStreamLoading}
               streamError={profileStreamError}
               streamResult={profileStreamResult?.result_json ?? null}
+              streamTitle={profileStreamTitle}
             />
           )}
           {['week', 'money', 'love', 'work'].includes(activeTab) && (

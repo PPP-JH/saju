@@ -106,8 +106,8 @@ async function fakeStreamText(
   onDelta: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const CHUNK_SIZE = 5;
-  const DELAY_MS = 18;
+  const CHUNK_SIZE = 2;
+  const DELAY_MS = 30;
   for (let i = 0; i < text.length; i += CHUNK_SIZE) {
     if (signal?.aborted) break;
     onDelta(text.slice(i, i + CHUNK_SIZE));
@@ -122,6 +122,7 @@ export async function streamRead(
     period_key: string;
   },
   handlers: {
+    onTitle?: (title: string) => void;
     onDelta?: (text: string) => void;
     onDone: (payload: StreamDonePayload) => void;
     onError?: (message: string) => void;
@@ -177,6 +178,10 @@ export async function streamRead(
 
       try {
         const payloadData = JSON.parse(dataText) as Record<string, unknown>;
+        if (eventName === 'title' && typeof payloadData.text === 'string') {
+          handlers.onTitle?.(payloadData.text);
+          return;
+        }
         if (eventName === 'delta' && typeof payloadData.text === 'string') {
           hasDelta = true;
           handlers.onDelta?.(payloadData.text);
@@ -224,6 +229,11 @@ export async function streamRead(
       hasDone = true;
       const donePayload = pendingDone as StreamDonePayload;
       if (!hasDelta && handlers.onDelta) {
+        // Emit title first, then fake-stream the narrative
+        const titleText = donePayload.result_json?.title ?? '';
+        if (titleText) {
+          handlers.onTitle?.(titleText);
+        }
         const summaryText = donePayload.result_json?.summary ?? '';
         if (summaryText) {
           await fakeStreamText(summaryText, handlers.onDelta, requestController.signal);

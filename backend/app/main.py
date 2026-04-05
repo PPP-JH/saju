@@ -149,6 +149,15 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
 
         raw_text = ""
         has_delta = False
+        is_profile = payload.feature_type == "profile_detail"
+        sep = narrator._NARRATIVE_SEP
+        _TITLE_START = "[TITLE]"
+        _TITLE_END = "[/TITLE]"
+        title_emitted = False   # title SSE event already sent
+        narrative_start = 0     # index in raw_text where narrative begins (after title line)
+        narrative_yielded = 0   # chars of raw_text already sent to frontend
+        narrative_done = False  # separator has been seen
+
         try:
             async for delta in narrator.stream_result_text(
                 profile=profile,
@@ -157,15 +166,50 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
             ):
                 raw_text += delta
                 has_delta = True
-                clean_delta = (
-                    delta
-                    .replace("```json\n", "")
-                    .replace("```json", "")
-                    .replace("```\n", "")
-                    .replace("```", "")
-                )
-                if clean_delta:
-                    yield _to_sse(event="delta", data={"text": clean_delta})
+
+                if not is_profile:
+                    # Non-profile: strip fences and yield
+                    clean_delta = (
+                        delta
+                        .replace("```json\n", "")
+                        .replace("```json", "")
+                        .replace("```\n", "")
+                        .replace("```", "")
+                    )
+                    if clean_delta:
+                        yield _to_sse(event="delta", data={"text": clean_delta})
+                elif not title_emitted:
+                    # Buffer until we see [/TITLE]
+                    if _TITLE_END in raw_text:
+                        title_emitted = True
+                        ts = raw_text.find(_TITLE_START)
+                        te = raw_text.find(_TITLE_END)
+                        if ts != -1:
+                            title_text = raw_text[ts + len(_TITLE_START):te]
+                            yield _to_sse(event="title", data={"text": title_text.strip()})
+                        # Narrative starts after [/TITLE]\n
+                        after_title = raw_text[te + len(_TITLE_END):]
+                        narrative_start = len(raw_text) - len(after_title.lstrip("\n"))
+                        narrative_yielded = narrative_start
+                elif not narrative_done:
+                    if sep in raw_text:
+                        # Separator found — yield anything before it not yet sent
+                        narrative_done = True
+                        sep_pos = raw_text.index(sep)
+                        to_yield = raw_text[narrative_yielded:sep_pos]
+                        if to_yield:
+                            yield _to_sse(event="delta", data={"text": to_yield})
+                        narrative_yielded = len(raw_text)
+                    else:
+                        # No separator yet — safe to yield up to len - len(sep)
+                        # to avoid partial separator leaking
+                        safe_end = max(narrative_yielded, len(raw_text) - len(sep))
+                        if safe_end > narrative_yielded:
+                            to_yield = raw_text[narrative_yielded:safe_end]
+                            if to_yield:
+                                yield _to_sse(event="delta", data={"text": to_yield})
+                            narrative_yielded = safe_end
+                # After narrative_done for profile: don't yield (it's JSON)
         except Exception:
             logger.exception(
                 "Read stream narration iteration failed: profile_id=%s feature_type=%s period_key=%s",
@@ -178,6 +222,12 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
 
         parsed = narrator.parse_result_text(raw_text) if raw_text else None
         final_result = parsed or fallback_json
+
+        # For profile_detail: store the narrative prose as summary so cache-hit fake-stream works
+        if payload.feature_type == "profile_detail" and raw_text and narrator._NARRATIVE_SEP in raw_text:
+            narrative = raw_text.split(narrator._NARRATIVE_SEP, 1)[0].strip()
+            if narrative and final_result:
+                final_result = {**final_result, "summary": narrative}
 
         # If LLM stream yielded nothing, still stream fallback narration chunks so UI doesn't stay empty.
         if not has_delta:

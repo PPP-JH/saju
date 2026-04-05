@@ -10,6 +10,7 @@ type ProfileTabProps = {
   streamLoading: boolean;
   streamError: string | null;
   streamResult: ReadResult | null;
+  streamTitle: string | null;
 };
 
 const GOD_LABEL_MAP: Record<string, string> = {
@@ -26,6 +27,7 @@ export default function ProfileTab({
   streamLoading,
   streamError,
   streamResult,
+  streamTitle,
 }: ProfileTabProps) {
   const pillars = [
     { name: '시주', top: profile.pillars.time[0], bottom: profile.pillars.time[1] },
@@ -53,45 +55,51 @@ export default function ProfileTab({
       {/* ── 사주 풀이 (최상단) ── */}
       {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
 
-      {!streamError && !streamResult && streamLoading && (
+      {!streamError && !streamText && !streamResult && (
+        <p className={styles.streamHintText}>사주의 기운을 읽는 중입니다...</p>
+      )}
+
+      {!streamError && (streamText || streamTitle) && (
         <Card className={styles.llmStreamCard}>
-          <p className={styles.streamHintText}>사주의 기운을 읽는 중입니다...</p>
+          {(streamTitle ?? streamResult?.title) && (
+            <h2 className={styles.narrativeTitle}>{streamTitle ?? streamResult?.title}</h2>
+          )}
+          <p className={styles.streamingText}>
+            {streamText}
+            {streamLoading && <span className={styles.cursor} />}
+          </p>
         </Card>
       )}
 
-      {!streamError && streamResult && (
-        <div className={styles.tabContainer}>
-          <h2 className={styles.sectionTitle}>{streamResult.title}</h2>
-          <p className={styles.streamingText}>{streamResult.summary}</p>
+      {!streamError && streamResult && streamResult.details.length > 0 && (
+        <>
+          <div className={styles.divider} />
+          <div className={styles.detailsList}>
+            {streamResult.details.map((item, i) => (
+              <Card key={`${item.subtitle}-${i}`} className={styles.detailCard}>
+                <div className={styles.detailIndex}>{i + 1}</div>
+                <div className={styles.detailContent}>
+                  <h4 className={styles.detailSubTitle}>{item.subtitle}</h4>
+                  <p className={styles.detailText}>{item.content}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
-          {streamResult.details.length > 0 && (
-            <div className={styles.detailsList}>
-              {streamResult.details.map((item, i) => (
-                <Card key={`${item.subtitle}-${i}`} className={styles.detailCard}>
-                  <div className={styles.detailIndex}>{i + 1}</div>
-                  <div className={styles.detailContent}>
-                    <h4 className={styles.detailSubTitle}>{item.subtitle}</h4>
-                    <p className={styles.detailText}>{item.content}</p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {streamResult.actions.length > 0 && (
-            <>
-              <h3 className={styles.sectionSubTitle}>삶의 방향</h3>
-              <div className={styles.actionsList}>
-                {streamResult.actions.map((act, i) => (
-                  <div key={`${act}-${i}`} className={styles.actionItem}>
-                    <div className={styles.checkIcon}>✓</div>
-                    <span>{act}</span>
-                  </div>
-                ))}
+      {!streamError && streamResult && streamResult.actions.length > 0 && (
+        <>
+          <h3 className={styles.sectionSubTitle}>삶의 방향</h3>
+          <div className={styles.actionsList}>
+            {streamResult.actions.map((act, i) => (
+              <div key={`${act}-${i}`} className={styles.actionItem}>
+                <div className={styles.checkIcon}>✓</div>
+                <span>{act}</span>
               </div>
-            </>
-          )}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className={styles.divider} />

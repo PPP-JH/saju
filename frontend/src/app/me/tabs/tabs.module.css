@@ -226,10 +226,20 @@
 }
 
 .llmStreamCard {
-    padding: 1.5rem;
+    padding: 1.5rem 2rem;
     background: var(--bg-card);
-    border: 1px dashed var(--primary);
+    border: 1px solid var(--border);
     position: relative;
+}
+
+.narrativeTitle {
+    font-family: var(--font-display), serif;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
 }
 
 .streamingText {

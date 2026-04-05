@@ -78,20 +78,24 @@ class GeminiNarrator:
         if is_profile:
             schema_hint = {
                 "title": "string — 일간 기질을 한 문장으로 (예: '갑목의 사람, 뻗어나가는 기운')",
-                "summary": "string",
+                "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
                 "score": 50,
                 "details": [{"subtitle": "string", "content": "string"}],
                 "actions": ["string"],
             }
             content_rules = [
-                "summary는 12~18문장. 일간이 어떤 기운인지 → 오행 강약이 삶에 어떤 의미인지 → 십성 분포가 드러내는 기질 패턴 순으로 전개",
-                "details는 6~8개. 각 subtitle은 삶의 테마(기질, 관계, 일, 건강, 재물, 성장 방향 등). content는 4~6문장, 사주 근거를 명시하며 서술",
-                "actions는 8~10개. '이번 주'가 아닌 타임리스 삶의 방향 — '~하는 습관을 들이면 좋다', '~를 경계하라' 형태",
-                "pillars.day[0](일간 천간)을 반드시 특정하고 그 기운의 특성을 풀이의 출발점으로 삼을 것",
-                "오행 중 가장 많은 것과 없거나 적은 것을 반드시 언급하고 그 불균형이 성격/삶에 미치는 영향을 구체적으로 서술",
-                "ten_gods_summary에서 강한 성분을 인용해 기질 해석의 근거로 제시",
-                "시간·날짜·주차·연도 언급 완전 금지 — 이 풀이는 평생 유효한 성격/기질 분석임",
-                "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시",
+                "출력은 반드시 세 단계로 구성한다:",
+                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]일간 기질을 한 문장으로[/TITLE]",
+                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 일간 기운 → 오행 강약 → 십성 기질 패턴 순으로 자연스럽게 서술. 마크다운/JSON 문법 금지. 사용자가 실시간으로 읽는 텍스트다.",
+                "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
+                "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
+                "details는 6~8개. subtitle은 삶의 테마(기질, 관계, 일, 건강, 재물, 성장 방향 등). content는 4~6문장, 사주 근거 명시.",
+                "actions는 8~10개. 타임리스 삶의 방향 — '~하는 습관을 들이면 좋다', '~를 경계하라' 형태.",
+                "pillars.day[0](일간 천간)을 반드시 특정하고 그 기운의 특성을 산문 출발점으로 삼을 것.",
+                "오행 중 가장 많은 것과 없거나 적은 것을 반드시 언급하고 그 불균형이 성격/삶에 미치는 영향을 구체적으로 서술.",
+                "ten_gods_summary에서 강한 성분을 인용해 기질 해석의 근거로 제시.",
+                "시간·날짜·주차·연도 언급 완전 금지 — 이 풀이는 평생 유효한 성격/기질 분석임.",
+                "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
             ]
         else:
             schema_hint = {
@@ -140,10 +144,15 @@ class GeminiNarrator:
             "work_week": "업무 우선순위와 협업 중심",
         }
 
+        output_rule = (
+            "출력 규칙: [산문 풀이]\\n---END_NARRATIVE---\\n[JSON 객체] 형식으로 출력. 마크다운/코드펜스 금지."
+            if is_profile else
+            "출력 규칙: 반드시 JSON 객체만 반환하세요. 마크다운/코드펜스/설명 문장 금지."
+        )
         base_prompt = (
             "역할: 사주해의 전문 풀이 작성자.\n"
             "목표: 입력된 사주 요약 근거를 바탕으로, 사용자에게 실용적이고 과장 없는 해석을 제공합니다.\n"
-            "출력 규칙: 반드시 JSON 객체만 반환하세요. 마크다운/코드펜스/설명 문장 금지.\n"
+            f"{output_rule}\n"
             "문체 규칙: 'AI/모델' 등 구현 언급 금지, 단정적 예언 금지, 위로/조언 중심.\n"
             f"feature_type: {feature_type}\n"
             f"feature_focus: {feature_hint.get(feature_type, '현재 기간의 핵심 흐름 중심')}\n"
@@ -194,9 +203,14 @@ class GeminiNarrator:
             http_options=types.HttpOptions(timeout=timeout_ms),
         )
 
+    _NARRATIVE_SEP = "---END_NARRATIVE---"
+
     def parse_result_text(self, raw_text: str) -> dict[str, Any] | None:
+        text = raw_text
+        if self._NARRATIVE_SEP in raw_text:
+            text = raw_text.split(self._NARRATIVE_SEP, 1)[1].strip()
         try:
-            parsed = json.loads(self._extract_json_text(raw_text))
+            parsed = json.loads(self._extract_json_text(text))
             validated = FortuneResult.model_validate(parsed)
             return validated.model_dump()
         except (json.JSONDecodeError, ValidationError, TypeError):
