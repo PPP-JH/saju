@@ -10,9 +10,10 @@ interface FortuneTabProps {
   streamTitle: string | null;
   streamLoading: boolean;
   streamError: string | null;
+  isWeekly: boolean;
 }
 
-export default function FortuneTab({ data, streamText, streamTitle, streamLoading, streamError }: FortuneTabProps) {
+export default function FortuneTab({ data, streamText, streamTitle, streamLoading, streamError, isWeekly }: FortuneTabProps) {
   if (streamError) {
     return <p className={styles.streamErrorText}>{streamError}</p>;
   }
@@ -30,7 +31,7 @@ export default function FortuneTab({ data, streamText, streamTitle, streamLoadin
       <Card className={styles.llmStreamCard}>
         <div className={styles.fortuneNarrativeHeader}>
           {title && <h2 className={styles.narrativeTitle}>{title}</h2>}
-          {data && (
+          {data && isWeekly && (
             <div className={styles.scoreBadge}>
               {data.score}<span>점</span>
             </div>

@@ -26,10 +26,12 @@ type FortuneStreamErrorMap = Partial<Record<FortuneTabId, string | null>>;
 
 const FEATURE_MAP: Record<FortuneTabId, string> = {
   week: 'week',
-  money: 'money_week',
-  love: 'love_week',
-  work: 'work_week',
+  money: 'money',
+  love: 'love',
+  work: 'work',
 };
+
+const TIMELESS_TABS = new Set<FortuneTabId>(['money', 'love', 'work']);
 
 function MySajuHub() {
   const router = useRouter();
@@ -230,7 +232,7 @@ function MySajuHub() {
       {
         profile_id: profile.profile_id,
         feature_type: FEATURE_MAP[key],
-        period_key: currentWeekKey,
+        period_key: TIMELESS_TABS.has(key) ? 'lifetime' : currentWeekKey,
       },
       {
         onTitle: (title) => {
@@ -363,6 +365,7 @@ function MySajuHub() {
               streamTitle={fortuneStreamTitleByTab[activeTab as FortuneTabId] ?? null}
               streamLoading={fortuneStreamLoadingByTab[activeTab as FortuneTabId] ?? false}
               streamError={fortuneStreamErrorByTab[activeTab as FortuneTabId] ?? null}
+              isWeekly={activeTab === 'week'}
             />
           )}
         </section>

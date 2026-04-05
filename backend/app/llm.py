@@ -74,6 +74,7 @@ class GeminiNarrator:
         }
         period_label = GeminiNarrator._period_label(feature_type)
         is_profile = feature_type == "profile_detail"
+        is_timeless = feature_type in ("profile_detail", "money", "love", "work")
 
         if is_profile:
             schema_hint = {
@@ -95,6 +96,27 @@ class GeminiNarrator:
                 "오행 중 가장 많은 것과 없거나 적은 것을 반드시 언급하고 그 불균형이 성격/삶에 미치는 영향을 구체적으로 서술.",
                 "ten_gods_summary에서 강한 성분을 인용해 기질 해석의 근거로 제시.",
                 "시간·날짜·주차·연도 언급 완전 금지 — 이 풀이는 평생 유효한 성격/기질 분석임.",
+                "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
+            ]
+        elif feature_type in ("money", "love", "work"):
+            _domain = {"money": "재물·돈", "love": "관계·애정", "work": "직업·일"}[feature_type]
+            schema_hint = {
+                "title": f"string — {_domain} 기질을 한 문장으로",
+                "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
+                "score": 50,
+                "details": [{"subtitle": "string", "content": "string"}],
+                "actions": ["string"],
+            }
+            content_rules = [
+                "출력은 반드시 세 단계로 구성한다:",
+                f"  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]{_domain} 기질을 한 문장으로[/TITLE]",
+                f"  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 이 사람의 {_domain} 기질·패턴·강약점을 팔자 근거로 서술. 마크다운/JSON 문법 금지.",
+                "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
+                "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
+                "details는 6~8개. subtitle은 기질·패턴·삶의 테마. content는 4~6문장, 사주 근거 명시.",
+                "actions는 8~10개. 타임리스 삶의 방향 — 이번 주/이번 달 언급 금지.",
+                "pillars.day[0](일간)을 출발점으로 삼아 해당 도메인 기질을 서술.",
+                "시간·날짜·주차·연도 언급 완전 금지 — 평생 유효한 기질 분석임.",
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
             ]
         else:
@@ -142,10 +164,10 @@ class GeminiNarrator:
                 "시간에 묶이지 않는 타고난 성격·기질·삶의 패턴을 다룬다. "
                 "운세(이번 주/이번 달)가 아닌 '이 사람은 어떤 사람인가'에 답해야 한다."
             ),
+            "money": "재물·돈과의 관계 — 팔자에서 읽히는 타고난 재물 기질, 재성/식상 패턴, 돈을 대하는 방식.",
+            "love": "관계·애정 — 팔자에서 읽히는 타고난 관계 패턴, 관성/인성 구조, 사람을 대하는 방식.",
+            "work": "직업·일 — 팔자에서 읽히는 타고난 직업 기질, 관성/식상 패턴, 일을 대하는 방식.",
             "week": "이번 주 전체 흐름 중심",
-            "money_week": "재물/소비/저축 의사결정 중심",
-            "love_week": "관계의 온도와 소통 중심",
-            "work_week": "업무 우선순위와 협업 중심",
         }
 
         output_rule = "출력 규칙: [TITLE]타이틀[/TITLE]\\n[산문 풀이]\\n---END_NARRATIVE---\\n[JSON 객체] 형식으로 출력. 마크다운/코드펜스 금지."
@@ -157,7 +179,7 @@ class GeminiNarrator:
             f"feature_type: {feature_type}\n"
             f"feature_focus: {feature_hint.get(feature_type, '현재 기간의 핵심 흐름 중심')}\n"
         )
-        if not is_profile:
+        if not is_timeless:
             base_prompt += (
                 f"period_label: {period_label}\n"
                 "period_label_usage: summary/details/actions에서 시간 표현이 필요할 때 반드시 period_label 값만 사용하세요. '주차', '월', 연도·숫자 형식의 날짜 직접 언급 금지.\n"
