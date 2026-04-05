@@ -99,14 +99,18 @@ class GeminiNarrator:
             ]
         else:
             schema_hint = {
-                "title": "string",
-                "summary": "string",
+                "title": "string — 이번 주 핵심 기운을 한 문장으로",
+                "summary": "string — 산문 풀이 전체를 한 문장으로 요약 (캐시/검색용)",
                 "score": "int(0-100)",
                 "details": [{"subtitle": "string", "content": "string"}],
                 "actions": ["string"],
             }
             content_rules = [
-                "summary는 10~15문장, 핵심 흐름 + 구체적 상황 묘사 + 실용 조언을 균형 있게",
+                "출력은 반드시 세 단계로 구성한다:",
+                "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이번 주 핵심을 한 문장으로[/TITLE]",
+                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 10~15문장의 한국어 산문. 핵심 흐름 + 구체적 상황 묘사 + 실용 조언. 마크다운/JSON 문법 금지.",
+                "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
+                "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
                 "details는 6~8개, 각 content는 4~6문장으로 충분히 상세하게 작성",
                 "actions는 8~10개, 바로 실행 가능한 구체적 문장형 조언",
                 "elements/ten_gods_summary/keywords/pillars를 근거로 자연스럽게 반영",
@@ -144,11 +148,7 @@ class GeminiNarrator:
             "work_week": "업무 우선순위와 협업 중심",
         }
 
-        output_rule = (
-            "출력 규칙: [산문 풀이]\\n---END_NARRATIVE---\\n[JSON 객체] 형식으로 출력. 마크다운/코드펜스 금지."
-            if is_profile else
-            "출력 규칙: 반드시 JSON 객체만 반환하세요. 마크다운/코드펜스/설명 문장 금지."
-        )
+        output_rule = "출력 규칙: [TITLE]타이틀[/TITLE]\\n[산문 풀이]\\n---END_NARRATIVE---\\n[JSON 객체] 형식으로 출력. 마크다운/코드펜스 금지."
         base_prompt = (
             "역할: 사주해의 전문 풀이 작성자.\n"
             "목표: 입력된 사주 요약 근거를 바탕으로, 사용자에게 실용적이고 과장 없는 해석을 제공합니다.\n"

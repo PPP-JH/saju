@@ -7,6 +7,7 @@ import styles from './tabs.module.css';
 interface FortuneTabProps {
   data: ReadResult | null;
   streamText: string;
+  streamTitle: string | null;
   streamLoading: boolean;
   streamError: string | null;
 }
@@ -48,29 +49,37 @@ function LoadingSkeleton() {
   );
 }
 
-export default function FortuneTab({ data, streamLoading, streamError }: FortuneTabProps) {
+export default function FortuneTab({ data, streamText, streamTitle, streamLoading, streamError }: FortuneTabProps) {
   if (streamError) {
     return <p className={styles.streamErrorText}>{streamError}</p>;
   }
 
+  // Streaming phase: show narrative card while data isn't ready yet
   if (!data) {
-    if (streamLoading) return <LoadingSkeleton />;
-    return <p className={styles.streamHintText}>사주의 흐름을 읽는 중입니다...</p>;
+    if (!streamText && !streamTitle) {
+      return <p className={styles.streamHintText}>사주의 흐름을 읽는 중입니다...</p>;
+    }
+    return (
+      <div className={styles.tabContainer}>
+        <Card className={styles.llmStreamCard}>
+          {streamTitle && <h2 className={styles.narrativeTitle}>{streamTitle}</h2>}
+          <p className={styles.streamingText}>
+            {streamText}
+            {streamLoading && <span className={styles.cursor} />}
+          </p>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className={styles.tabContainer}>
-      {/* 제목 + 요약 + 점수(서브) */}
+      {/* 제목 + 점수 */}
       <Card className={styles.scoreCard}>
         <div className={styles.scoreHeader}>
           <h2 className={styles.scoreTitle}>{data.title}</h2>
           <div className={styles.scoreValue}>{data.score}<span>점</span></div>
         </div>
-
-        {/* 요약 본문 */}
-        {data.summary && (
-          <p className={styles.summaryText}>{data.summary}</p>
-        )}
       </Card>
 
       {/* 광고 */}

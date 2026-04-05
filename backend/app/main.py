@@ -149,7 +149,6 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
 
         raw_text = ""
         has_delta = False
-        is_profile = payload.feature_type == "profile_detail"
         sep = narrator._NARRATIVE_SEP
         _TITLE_START = "[TITLE]"
         _TITLE_END = "[/TITLE]"
@@ -167,18 +166,7 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                 raw_text += delta
                 has_delta = True
 
-                if not is_profile:
-                    # Non-profile: strip fences and yield
-                    clean_delta = (
-                        delta
-                        .replace("```json\n", "")
-                        .replace("```json", "")
-                        .replace("```\n", "")
-                        .replace("```", "")
-                    )
-                    if clean_delta:
-                        yield _to_sse(event="delta", data={"text": clean_delta})
-                elif not title_emitted:
+                if not title_emitted:
                     # Buffer until we see [/TITLE]
                     if _TITLE_END in raw_text:
                         title_emitted = True
@@ -209,7 +197,7 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
                             if to_yield:
                                 yield _to_sse(event="delta", data={"text": to_yield})
                             narrative_yielded = safe_end
-                # After narrative_done for profile: don't yield (it's JSON)
+                # After narrative_done: don't yield (it's JSON)
         except Exception:
             logger.exception(
                 "Read stream narration iteration failed: profile_id=%s feature_type=%s period_key=%s",
@@ -223,9 +211,12 @@ async def stream_read(payload: ReadCreateRequest) -> StreamingResponse:
         parsed = narrator.parse_result_text(raw_text) if raw_text else None
         final_result = parsed or fallback_json
 
-        # For profile_detail: store the narrative prose as summary so cache-hit fake-stream works
-        if payload.feature_type == "profile_detail" and raw_text and narrator._NARRATIVE_SEP in raw_text:
-            narrative = raw_text.split(narrator._NARRATIVE_SEP, 1)[0].strip()
+        # Store the narrative prose as summary so cache-hit fake-stream works for all types
+        if raw_text and narrator._NARRATIVE_SEP in raw_text:
+            full_narrative = raw_text.split(narrator._NARRATIVE_SEP, 1)[0]
+            # Strip [TITLE]...[/TITLE] line from narrative before storing
+            _te = full_narrative.find("[/TITLE]")
+            narrative = full_narrative[_te + len("[/TITLE]"):].strip() if _te != -1 else full_narrative.strip()
             if narrative and final_result:
                 final_result = {**final_result, "summary": narrative}
 

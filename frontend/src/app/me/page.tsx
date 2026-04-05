@@ -49,11 +49,16 @@ function MySajuHub() {
   const [fortuneStreamTextByTab, setFortuneStreamTextByTab] = useState<FortuneStreamTextMap>({});
   const [fortuneStreamLoadingByTab, setFortuneStreamLoadingByTab] = useState<FortuneStreamLoadingMap>({});
   const [fortuneStreamErrorByTab, setFortuneStreamErrorByTab] = useState<FortuneStreamErrorMap>({});
+  const [fortuneStreamTitleByTab, setFortuneStreamTitleByTab] = useState<Partial<Record<FortuneTabId, string>>>({});
+
   const profileStreamLoadingRef = useRef(profileStreamLoading);
   const fortuneStreamLoadingByTabRef = useRef(fortuneStreamLoadingByTab);
   const profileStreamQueueRef = useRef('');
   const profileTypewriterRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingProfileResultRef = useRef<StreamDonePayload | null>(null);
+  const fortuneStreamQueueByTabRef = useRef<Partial<Record<FortuneTabId, string>>>({});
+  const fortuneTypewriterByTabRef = useRef<Partial<Record<FortuneTabId, ReturnType<typeof setInterval>>>>({});
+  const pendingFortuneResultByTabRef = useRef<Partial<Record<FortuneTabId, StreamDonePayload>>>({});
 
   profileStreamLoadingRef.current = profileStreamLoading;
   fortuneStreamLoadingByTabRef.current = fortuneStreamLoadingByTab;
@@ -188,11 +193,38 @@ function MySajuHub() {
     if (fortuneByTab[key] || fortuneStreamLoadingByTabRef.current[key]) {
       return;
     }
+    fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: true };
+
+    const CHARS_PER_TICK = 3;
+    const TICK_MS = 50;
 
     const controller = new AbortController();
+    fortuneStreamQueueByTabRef.current = { ...fortuneStreamQueueByTabRef.current, [key]: '' };
+    pendingFortuneResultByTabRef.current = { ...pendingFortuneResultByTabRef.current };
+    delete pendingFortuneResultByTabRef.current[key];
     setFortuneStreamTextByTab((prev) => ({ ...prev, [key]: '' }));
+    setFortuneStreamTitleByTab((prev) => ({ ...prev, [key]: undefined }));
     setFortuneStreamErrorByTab((prev) => ({ ...prev, [key]: null }));
     setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: true }));
+
+    fortuneTypewriterByTabRef.current[key] = setInterval(() => {
+      const queue = fortuneStreamQueueByTabRef.current[key] ?? '';
+      if (queue.length > 0) {
+        const chunk = queue.slice(0, CHARS_PER_TICK);
+        fortuneStreamQueueByTabRef.current[key] = queue.slice(CHARS_PER_TICK);
+        setFortuneStreamTextByTab((prev) => ({ ...prev, [key]: (prev[key] ?? '') + chunk }));
+      } else if (pendingFortuneResultByTabRef.current[key]) {
+        const pending = pendingFortuneResultByTabRef.current[key]!;
+        delete pendingFortuneResultByTabRef.current[key];
+        if (fortuneTypewriterByTabRef.current[key]) {
+          clearInterval(fortuneTypewriterByTabRef.current[key]);
+          delete fortuneTypewriterByTabRef.current[key];
+        }
+        setFortuneByTab((prev) => ({ ...prev, [key]: pending.result_json }));
+        setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
+        fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: false };
+      }
+    }, TICK_MS);
 
     void streamRead(
       {
@@ -201,41 +233,51 @@ function MySajuHub() {
         period_key: currentWeekKey,
       },
       {
+        onTitle: (title) => {
+          setFortuneStreamTitleByTab((prev) => ({ ...prev, [key]: title }));
+        },
         onDelta: (text) => {
-          setFortuneStreamTextByTab((prev) => ({
-            ...prev,
-            [key]: (prev[key] ?? '') + text,
-          }));
+          fortuneStreamQueueByTabRef.current[key] = (fortuneStreamQueueByTabRef.current[key] ?? '') + text;
         },
         onDone: (payload) => {
-          setFortuneByTab((prev) => ({
-            ...prev,
-            [key]: payload.result_json,
-          }));
-          setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
+          pendingFortuneResultByTabRef.current[key] = payload;
         },
         onError: (message) => {
+          if (fortuneTypewriterByTabRef.current[key]) {
+            clearInterval(fortuneTypewriterByTabRef.current[key]);
+            delete fortuneTypewriterByTabRef.current[key];
+          }
           setFortuneStreamErrorByTab((prev) => ({ ...prev, [key]: message }));
           setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
+          fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: false };
         },
       },
       controller.signal,
     )
       .catch((err) => {
         if (!controller.signal.aborted) {
+          if (fortuneTypewriterByTabRef.current[key]) {
+            clearInterval(fortuneTypewriterByTabRef.current[key]);
+            delete fortuneTypewriterByTabRef.current[key];
+          }
           setFortuneStreamErrorByTab((prev) => ({
             ...prev,
             [key]: err instanceof Error ? err.message : '운세를 불러오지 못했습니다.',
           }));
+          fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: false };
         }
       })
       .finally(() => {
-        // abort 여부 관계없이 loading 해제 — abort 후 탭 재방문 시 스트림 재시작 보장
         setFortuneStreamLoadingByTab((prev) => ({ ...prev, [key]: false }));
       });
 
     return () => {
       controller.abort();
+      if (fortuneTypewriterByTabRef.current[key]) {
+        clearInterval(fortuneTypewriterByTabRef.current[key]);
+        delete fortuneTypewriterByTabRef.current[key];
+      }
+      fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: false };
     };
   }, [activeTab, currentWeekKey, fortuneByTab, profile]);
 
@@ -318,6 +360,7 @@ function MySajuHub() {
             <FortuneTab
               data={currentFortune ?? null}
               streamText={fortuneStreamTextByTab[activeTab as FortuneTabId] ?? ''}
+              streamTitle={fortuneStreamTitleByTab[activeTab as FortuneTabId] ?? null}
               streamLoading={fortuneStreamLoadingByTab[activeTab as FortuneTabId] ?? false}
               streamError={fortuneStreamErrorByTab[activeTab as FortuneTabId] ?? null}
             />
