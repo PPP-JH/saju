@@ -59,30 +59,6 @@
     font-size: 1.125rem;
 }
 
-.searchBox {
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 3rem;
-    position: relative;
-}
-
-.input {
-    width: 100%;
-    padding: 1rem 1.5rem;
-    border: 2px solid var(--border);
-    border-radius: var(--radius-lg);
-    font-size: 1.125rem;
-    background: var(--bg-card);
-    color: var(--foreground);
-    transition: all 0.2s;
-    box-shadow: var(--shadow-sm);
-}
-
-.input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-}
 
 .termList {
     width: 100%;
@@ -107,14 +83,4 @@
     font-size: 1rem;
     line-height: 1.6;
     color: var(--foreground);
-}
-
-.empty {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 4rem;
-    color: var(--text-muted);
-    font-size: 1.125rem;
-    background: var(--bg-card-hover);
-    border-radius: var(--radius-lg);
 }
