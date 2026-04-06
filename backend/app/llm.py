@@ -205,8 +205,8 @@ class GeminiNarrator:
             "work": 8192,
         }
         config_kwargs: dict[str, Any] = {
-            "temperature": 0.4,
-            "top_p": 0.9,
+            "temperature": 0.7,
+            "top_p": 0.95,
             "max_output_tokens": max_tokens_map.get(feature_type, 1300),
         }
         # response_mime_type="application/json" causes Gemini to buffer the full

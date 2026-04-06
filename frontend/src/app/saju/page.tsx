@@ -32,7 +32,8 @@ const FEATURE_MAP: Record<FortuneTabId, string> = {
   work: 'work',
 };
 
-const TIMELESS_TABS = new Set<FortuneTabId>(['money', 'love', 'work']);
+// money/love/work는 기질 분석(프롬프트는 타임리스)이지만 주 단위로 캐시를 갱신해 매주 다른 서술을 제공
+const TIMELESS_TABS = new Set<FortuneTabId>(); // period_key 분기에 더 이상 사용 안 함
 
 function MySajuHub() {
   const router = useRouter();
@@ -233,7 +234,7 @@ function MySajuHub() {
       {
         profile_id: profile.profile_id,
         feature_type: FEATURE_MAP[key],
-        period_key: TIMELESS_TABS.has(key) ? 'lifetime' : currentWeekKey,
+        period_key: currentWeekKey,
       },
       {
         onTitle: (title) => {
