@@ -21,27 +21,34 @@ export default function FortuneTab({ data, streamText, streamTitle, streamLoadin
   const title = streamTitle ?? data?.title ?? null;
   const hasNarrative = !!(streamText || title);
 
-  if (!hasNarrative) {
-    return <p className={styles.streamHintText}>사주의 흐름을 읽는 중입니다...</p>;
-  }
-
   return (
     <div className={styles.tabContainer}>
-      {/* narrative 카드 — 스트리밍 중에도, 완료 후에도 유지 */}
-      <Card className={styles.llmStreamCard}>
-        <div className={styles.fortuneNarrativeHeader}>
-          {title && <h2 className={styles.narrativeTitle}>{title}</h2>}
-          {data && isWeekly && (
-            <div className={styles.scoreBadge}>
-              {data.score}<span>점</span>
-            </div>
-          )}
-        </div>
-        <p className={styles.streamingText}>
-          {streamText}
-          {streamLoading && <span className={styles.cursor} />}
-        </p>
-      </Card>
+      {/* 결과도 에러도 없으면 로딩 카드 표시 */}
+      {!hasNarrative && (
+        <Card className={styles.streamLoadingCard}>
+          <div className={styles.streamLoadingDots}>
+            <span /><span /><span />
+          </div>
+          <span className={styles.streamLoadingLabel}>사주를 읽는 중입니다</span>
+        </Card>
+      )}
+
+      {hasNarrative && (
+        <Card className={styles.llmStreamCard}>
+          <div className={styles.fortuneNarrativeHeader}>
+            {title && <h2 className={styles.narrativeTitle}>{title}</h2>}
+            {data && isWeekly && (
+              <div className={styles.scoreBadge}>
+                {data.score}<span>점</span>
+              </div>
+            )}
+          </div>
+          <p className={styles.streamingText}>
+            {streamText}
+            {streamLoading && <span className={styles.cursor} />}
+          </p>
+        </Card>
+      )}
 
       {/* 구조화 데이터 — done 이후에만 등장 */}
       {data && (

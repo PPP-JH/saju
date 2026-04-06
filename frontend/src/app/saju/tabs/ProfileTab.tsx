@@ -55,11 +55,16 @@ export default function ProfileTab({
       {/* ── 사주 풀이 (최상단) ── */}
       {streamError && <p className={styles.streamErrorText}>{streamError}</p>}
 
-      {!streamError && !streamText && !streamResult && (
-        <p className={styles.streamHintText}>사주의 기운을 읽는 중입니다...</p>
+      {!streamError && !streamText && !streamTitle && !streamResult && (
+        <Card className={styles.streamLoadingCard}>
+          <div className={styles.streamLoadingDots}>
+            <span /><span /><span />
+          </div>
+          <span className={styles.streamLoadingLabel}>사주를 읽는 중입니다</span>
+        </Card>
       )}
 
-      {!streamError && (streamText || streamTitle) && (
+      {!streamError && (streamText || streamTitle || streamResult) && (
         <Card className={styles.llmStreamCard}>
           {(streamTitle ?? streamResult?.title) && (
             <h2 className={styles.narrativeTitle}>{streamTitle ?? streamResult?.title}</h2>
