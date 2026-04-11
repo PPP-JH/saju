@@ -266,18 +266,18 @@ class DatabaseStore:
 
         title_map = {
             "week": "흐름을 정리하고 성과를 만드는 주",
-            "money_week": "지출 균형을 맞추기 좋은 주",
-            "love_week": "관계의 밀도를 높이기 좋은 주",
-            "work_week": "우선순위 정리가 성과를 만드는 주",
+            "money": "지출 균형을 맞추기 좋은 주",
+            "love": "관계의 밀도를 높이기 좋은 주",
+            "work": "우선순위 정리가 성과를 만드는 주",
             "profile_detail": "내 사주의 핵심 흐름 정리",
         }
         title = title_map.get(feature_type, "이번 흐름 요약")
         summary_map = {
             "profile_detail": f"{profile.summary_text}를 중심으로 현재의 강점과 보완점을 함께 살펴보는 흐름입니다.",
             "week": f"{period_label}에는 흐름을 단순하게 정리할수록 성과가 또렷해집니다.",
-            "money_week": f"{period_label}에는 지출 균형을 먼저 잡고, 작은 절약을 꾸준히 이어가는 전략이 유리합니다.",
-            "love_week": f"{period_label}에는 감정 표현의 밀도를 높이는 대화가 관계 안정에 도움이 됩니다.",
-            "work_week": f"{period_label}에는 우선순위를 명확히 잡으면 업무 완성도와 신뢰가 함께 올라갑니다.",
+            "money": f"{period_label}에는 지출 균형을 먼저 잡고, 작은 절약을 꾸준히 이어가는 전략이 유리합니다.",
+            "love": f"{period_label}에는 감정 표현의 밀도를 높이는 대화가 관계 안정에 도움이 됩니다.",
+            "work": f"{period_label}에는 우선순위를 명확히 잡으면 업무 완성도와 신뢰가 함께 올라갑니다.",
         }
 
         result = {

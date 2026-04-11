@@ -32,8 +32,6 @@ const FEATURE_MAP: Record<FortuneTabId, string> = {
   work: 'work',
 };
 
-// money/love/work는 기질 분석(프롬프트는 타임리스)이지만 주 단위로 캐시를 갱신해 매주 다른 서술을 제공
-const TIMELESS_TABS = new Set<FortuneTabId>(); // period_key 분기에 더 이상 사용 안 함
 
 function MySajuHub() {
   const router = useRouter();
@@ -202,6 +200,7 @@ function MySajuHub() {
     const CHARS_PER_TICK = 3;
     const TICK_MS = 50;
 
+    const twMap = fortuneTypewriterByTabRef.current;
     const controller = new AbortController();
     fortuneStreamQueueByTabRef.current = { ...fortuneStreamQueueByTabRef.current, [key]: '' };
     pendingFortuneResultByTabRef.current = { ...pendingFortuneResultByTabRef.current };
@@ -277,9 +276,9 @@ function MySajuHub() {
 
     return () => {
       controller.abort();
-      if (fortuneTypewriterByTabRef.current[key]) {
-        clearInterval(fortuneTypewriterByTabRef.current[key]);
-        delete fortuneTypewriterByTabRef.current[key];
+      if (twMap[key]) {
+        clearInterval(twMap[key]);
+        delete twMap[key];
       }
       fortuneStreamLoadingByTabRef.current = { ...fortuneStreamLoadingByTabRef.current, [key]: false };
     };
