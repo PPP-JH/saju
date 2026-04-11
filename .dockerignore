@@ -1,0 +1,10 @@
+.git
+*.md
+
+frontend/node_modules
+frontend/.next
+frontend/out
+
+backend/.venv
+backend/saju_local.db
+backend/__pycache__
