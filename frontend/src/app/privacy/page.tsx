@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         <section className={styles.section}>
           <h2 className={styles.heading}>5. 문의</h2>
           <p>개인정보 관련 문의는 아래로 연락 바랍니다.</p>
-          <p className={styles.contact}>이메일: contact@sajuhae.com</p>
+          <p className={styles.contact}>이메일: syntec3333@gmail.com</p>
         </section>
 
         <div className={styles.backRow}>
