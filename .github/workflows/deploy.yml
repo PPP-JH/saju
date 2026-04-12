@@ -30,7 +30,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/ppp-jh/saju:latest
+          tags: |
+            ghcr.io/ppp-jh/saju:latest
+            ghcr.io/ppp-jh/saju:${{ github.sha }}
 
       - name: Trigger Render deploy
         if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
