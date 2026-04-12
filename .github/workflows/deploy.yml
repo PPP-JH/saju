@@ -35,5 +35,7 @@ jobs:
             ghcr.io/ppp-jh/saju:${{ github.sha }}
 
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        if: ${{ env.HOOK_URL != '' }}
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -X POST "$HOOK_URL"
