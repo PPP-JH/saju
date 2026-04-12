@@ -40,17 +40,18 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Saju Hub API", version="0.1.0", lifespan=lifespan)
 
-_DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
-_cors_raw = os.getenv("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
-_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is only needed for local dev (next dev :3000 → uvicorn :8000).
+# In production the frontend is served from the same origin, so no CORS header is needed.
+# Set CORS_ORIGINS=http://localhost:3000 in your local .env to enable.
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 def _to_sse(event: str, data: dict) -> str:
