@@ -469,7 +469,7 @@
     margin-top: 2px;
 }
 
-/* Ad banner */
+/* Ad banner - AdSense 심사 신청 시 주석 해제
 .adBanner {
     position: relative;
     background: var(--bg-card-hover);
@@ -503,3 +503,4 @@
     color: var(--text-muted);
     font-size: 0.875rem;
 }
+*/

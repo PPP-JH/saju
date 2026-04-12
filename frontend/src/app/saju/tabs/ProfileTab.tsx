@@ -107,11 +107,12 @@ export default function ProfileTab({
         </>
       )}
 
-      {/* 광고 */}
+      {/* 광고 - AdSense 심사 신청 시 주석 해제
       <div className={styles.adBanner}>
         <span className={styles.adLabel}>광고</span>
         <div className={styles.adSlot} />
       </div>
+      */}
 
       <div className={styles.divider} />
 
