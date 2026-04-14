@@ -109,42 +109,6 @@
   border-color: var(--foreground);
 }
 
-/* ── Divider ── */
-
-.divider {
-  width: 100%;
-  max-width: 800px;
-  height: 1px;
-  background: var(--border);
-}
-
-/* ── Proof row ── */
-
-.proofRow {
-  width: 100%;
-  max-width: 800px;
-  display: flex;
-  gap: 3rem;
-  padding: 2.5rem 0 4rem;
-}
-
-.proofItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.proofNum {
-  font-family: var(--font-display), serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--foreground);
-}
-
-.proofLabel {
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-}
 
 /* ── Footer ── */
 
@@ -188,7 +152,4 @@
     gap: 1rem;
   }
 
-  .proofRow {
-    gap: 2rem;
-  }
 }

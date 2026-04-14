@@ -45,22 +45,6 @@ export default function Home() {
           </div>
         </section>
 
-        <div className={styles.divider} />
-
-        <section className={styles.proofRow}>
-          <div className={styles.proofItem}>
-            <span className={styles.proofNum}>3,000년</span>
-            <span className={styles.proofLabel}>명리학 전통</span>
-          </div>
-          <div className={styles.proofItem}>
-            <span className={styles.proofNum}>왜까지</span>
-            <span className={styles.proofLabel}>결과가 아닌 이유</span>
-          </div>
-          <div className={styles.proofItem}>
-            <span className={styles.proofNum}>처음도</span>
-            <span className={styles.proofLabel}>읽으면 이해</span>
-          </div>
-        </section>
       </main>
 
       <footer className={styles.footer}>
