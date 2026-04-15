@@ -74,7 +74,7 @@ _HEAVENLY_STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임"
 _EARTHLY_BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"]
 
 RULES_VERSION = "v1"
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 
 # 환경변수로 read 캐시 on/off 제어. 기본 활성화.
 _CACHE_READS_ENABLED = os.getenv("CACHE_READS_ENABLED", "true").lower() not in ("false", "0", "no")
