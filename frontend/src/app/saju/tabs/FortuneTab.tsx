@@ -55,16 +55,12 @@ export default function FortuneTab({ data, streamText, streamTitle, streamLoadin
         <>
           <div className={styles.divider} />
 
-          <h3 className={styles.sectionSubTitle}>상세 흐름</h3>
-          <div className={styles.detailsList}>
+          <div className={styles.bulletList}>
             {data.details.map((item, i) => (
-              <Card key={`${item.subtitle}-${i}`} className={styles.detailCard}>
-                <div className={styles.detailIndex}>{i + 1}</div>
-                <div className={styles.detailContent}>
-                  <h4 className={styles.detailSubTitle}>{item.subtitle}</h4>
-                  <p className={styles.detailText}>{item.content}</p>
-                </div>
-              </Card>
+              <div key={`${item.subtitle}-${i}`} className={styles.bulletItem}>
+                <span className={styles.bulletLabel}>{item.subtitle}</span>
+                <span className={styles.bulletContent}>{item.content}</span>
+              </div>
             ))}
           </div>
 

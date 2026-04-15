@@ -11,7 +11,81 @@ type ProfileTabProps = {
   streamError: string | null;
   streamResult: ReadResult | null;
   streamTitle: string | null;
+  weekKey: string;
 };
+
+// 오행 → 1~45 숫자 대응 (오행 고유 수리)
+const ELEMENT_NUMBERS: Record<string, number[]> = {
+  wood:  [3, 8, 13, 18, 23, 28, 33, 38, 43],
+  fire:  [2, 7, 12, 17, 22, 27, 32, 37, 42],
+  earth: [5, 10, 15, 20, 25, 30, 35, 40, 45],
+  metal: [4, 9, 14, 19, 24, 29, 34, 39, 44],
+  water: [1, 6, 11, 16, 21, 26, 31, 36, 41],
+};
+
+// 로또볼 색상 (한국 로또 기준)
+function ballColor(n: number): string {
+  if (n <= 10) return '#fbc400';
+  if (n <= 20) return '#69c8f2';
+  if (n <= 30) return '#ff7272';
+  if (n <= 40) return '#aaaaaa';
+  return '#b0d840';
+}
+
+function seededRandom(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s ^= s >>> 16;
+    return (s >>> 0) / 0x100000000;
+  };
+}
+
+function getLuckyNumbers(profile: ProfileResponse, weekKey: string): number[] {
+  // 시드: profile_id + weekKey 해시
+  const raw = profile.profile_id + weekKey;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = Math.imul(31, hash) + raw.charCodeAt(i);
+  }
+  const rand = seededRandom(hash);
+
+  // 오행 강도 순 정렬
+  const sorted = (
+    [
+      { key: 'wood',  count: profile.elements.wood },
+      { key: 'fire',  count: profile.elements.fire },
+      { key: 'earth', count: profile.elements.earth },
+      { key: 'metal', count: profile.elements.metal },
+      { key: 'water', count: profile.elements.water },
+    ] as { key: keyof typeof ELEMENT_NUMBERS; count: number }[]
+  ).sort((a, b) => b.count - a.count);
+
+  // 강한 오행일수록 더 많은 숫자를 풀에 추가 (5,4,3,2,1)
+  const pool: number[] = [];
+  sorted.forEach((el, idx) => {
+    const weight = 5 - idx;
+    const nums = ELEMENT_NUMBERS[el.key];
+    for (let i = 0; i < weight; i++) {
+      pool.push(nums[Math.floor(rand() * nums.length)]);
+    }
+  });
+
+  // 중복 제거 후 부족하면 1~45에서 랜덤 보충
+  const set = new Set(pool);
+  while (set.size < 6) {
+    set.add(Math.floor(rand() * 45) + 1);
+  }
+
+  // 시드 셔플 후 6개 추출, 오름차순 정렬
+  const arr = [...set];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, 6).sort((a, b) => a - b);
+}
 
 const GOD_LABEL_MAP: Record<string, string> = {
   비견: '독립심과 주도성',
@@ -28,7 +102,13 @@ export default function ProfileTab({
   streamError,
   streamResult,
   streamTitle,
+  weekKey,
 }: ProfileTabProps) {
+  const luckyNumbers = getLuckyNumbers(profile, weekKey);
+  const highlights = streamResult?.highlights;
+  const highlightedElements = new Set(highlights?.elements ?? []);
+  const highlightedTenGods = new Set(highlights?.ten_gods ?? []);
+
   const pillars = [
     { name: '시주', top: profile.pillars.time[0], bottom: profile.pillars.time[1] },
     { name: '일주', top: profile.pillars.day[0], bottom: profile.pillars.day[1], isMe: true },
@@ -37,11 +117,11 @@ export default function ProfileTab({
   ];
 
   const elements = [
-    { name: '목', count: profile.elements.wood, color: '#4ade80' },
-    { name: '화', count: profile.elements.fire, color: '#f87171' },
-    { name: '토', count: profile.elements.earth, color: '#fbbf24' },
-    { name: '금', count: profile.elements.metal, color: '#9ca3af' },
-    { name: '수', count: profile.elements.water, color: '#60a5fa' },
+    { name: '목', key: 'wood', count: profile.elements.wood, color: '#4ade80' },
+    { name: '화', key: 'fire', count: profile.elements.fire, color: '#f87171' },
+    { name: '토', key: 'earth', count: profile.elements.earth, color: '#fbbf24' },
+    { name: '금', key: 'metal', count: profile.elements.metal, color: '#9ca3af' },
+    { name: '수', key: 'water', count: profile.elements.water, color: '#60a5fa' },
   ];
 
   const tenGods = Object.entries(profile.ten_gods_summary).map(([name, level]) => ({
@@ -79,15 +159,12 @@ export default function ProfileTab({
       {!streamError && streamResult && streamResult.details.length > 0 && (
         <>
           <div className={styles.divider} />
-          <div className={styles.detailsList}>
+          <div className={styles.bulletList}>
             {streamResult.details.map((item, i) => (
-              <Card key={`${item.subtitle}-${i}`} className={styles.detailCard}>
-                <div className={styles.detailIndex}>{i + 1}</div>
-                <div className={styles.detailContent}>
-                  <h4 className={styles.detailSubTitle}>{item.subtitle}</h4>
-                  <p className={styles.detailText}>{item.content}</p>
-                </div>
-              </Card>
+              <div key={`${item.subtitle}-${i}`} className={styles.bulletItem}>
+                <span className={styles.bulletLabel}>{item.subtitle}</span>
+                <span className={styles.bulletContent}>{item.content}</span>
+              </div>
             ))}
           </div>
         </>
@@ -148,17 +225,20 @@ export default function ProfileTab({
 
       <Card className={styles.card}>
         <div className={styles.elementsRow}>
-          {elements.map((el) => (
-            <div key={el.name} className={styles.elementItem}>
-              <div className={styles.elementCircle} style={{ borderColor: el.color, color: el.color }}>
-                {el.name}
+          {elements.map((el) => {
+            const isHighlighted = highlightedElements.has(el.key);
+            return (
+              <div key={el.name} className={styles.elementItem}>
+                <div
+                  className={`${styles.elementCircle} ${isHighlighted ? styles.elementCircleHighlighted : ''}`}
+                  style={{ borderColor: el.color, color: el.color, ...(isHighlighted ? { background: el.color + '22' } : {}) }}
+                >
+                  {el.name}
+                </div>
+                <div className={`${styles.elementValue} ${isHighlighted ? styles.elementValueHighlighted : ''}`}>{el.count}개</div>
               </div>
-              <div className={styles.elementValue}>{el.count}개</div>
-            </div>
-          ))}
-        </div>
-        <div className={styles.interpretation}>
-          <strong>해석:</strong> {profile.summary_text}
+            );
+          })}
         </div>
       </Card>
 
@@ -173,7 +253,7 @@ export default function ProfileTab({
 
       <div className={styles.godsList}>
         {tenGods.map((god) => (
-          <Card key={god.name} className={styles.godCard}>
+          <Card key={god.name} className={`${styles.godCard} ${highlightedTenGods.has(god.name) ? styles.godCardHighlighted : ''}`}>
             <div className={styles.godHeader}>
               <h3 className={styles.godTitle}>{god.name}</h3>
               <span className={`${styles.badge} ${god.level === '강함' ? styles.badgeStrong : ''}`}>{god.level}</span>
@@ -182,6 +262,27 @@ export default function ProfileTab({
           </Card>
         ))}
       </div>
+
+      <div className={styles.divider} />
+
+      <header className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle}>이번 주 행운 번호</h2>
+        <p className={styles.sectionDesc}>오행의 기운을 기반으로 매주 새롭게 계산됩니다.</p>
+      </header>
+
+      <Card className={styles.card}>
+        <div className={styles.luckyNumbersRow}>
+          {luckyNumbers.map((n) => (
+            <div
+              key={n}
+              className={styles.lottoBall}
+              style={{ backgroundColor: ballColor(n) }}
+            >
+              {n}
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -24,6 +24,10 @@ export type ReadResult = {
   score: number;
   details: { subtitle: string; content: string }[];
   actions: string[];
+  highlights?: {
+    elements?: string[];   // e.g. ["wood", "fire"]
+    ten_gods?: string[];   // e.g. ["비견", "식상"]
+  };
 };
 
 export type ReadResponse = {
@@ -41,7 +45,7 @@ export type StreamDonePayload = {
   result_json: ReadResult;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

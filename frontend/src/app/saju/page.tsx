@@ -357,6 +357,7 @@ function MySajuHub() {
               streamError={profileStreamError}
               streamResult={profileStreamResult?.result_json ?? null}
               streamTitle={profileStreamTitle}
+              weekKey={currentWeekKey}
             />
           )}
           {['week', 'money', 'love', 'work'].includes(activeTab) && (

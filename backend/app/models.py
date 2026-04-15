@@ -79,12 +79,18 @@ class FortuneDetail(BaseModel):
     content: str = Field(min_length=1, max_length=500)
 
 
+class FortuneHighlights(BaseModel):
+    elements: list[str] = Field(default_factory=list)   # e.g. ["wood", "fire"]
+    ten_gods: list[str] = Field(default_factory=list)   # e.g. ["비견", "식상"]
+
+
 class FortuneResult(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     summary: str = Field(min_length=1, max_length=2000)
     score: int = Field(ge=0, le=100)
     details: list[FortuneDetail] = Field(min_length=1, max_length=10)
     actions: list[str] = Field(min_length=1, max_length=12)
+    highlights: FortuneHighlights = Field(default_factory=FortuneHighlights)
 
 
 class TooltipRequest(BaseModel):

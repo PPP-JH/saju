@@ -83,18 +83,21 @@ class GeminiNarrator:
                 "score": 50,
                 "details": [{"subtitle": "string", "content": "string"}],
                 "actions": ["string"],
+                "highlights": {
+                    "elements": ["fire", "metal"],
+                    "ten_gods": ["비견", "관성"],
+                },
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
                 "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이 사람을 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
-                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 일간 기운 → 오행 강약 → 십성 기질 패턴 순으로 자연스럽게 서술. 마크다운/JSON 문법 금지. 사용자가 실시간으로 읽는 텍스트다.",
+                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 3~4문장의 한국어 산문. 일간 기운과 오행 강약을 핵심만 간결하게 서술. 마크다운/JSON 문법 금지. 사용자가 실시간으로 읽는 텍스트다.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
-                "details는 6~8개. subtitle은 삶의 테마(기질, 관계, 일, 건강, 재물, 성장 방향 등). content는 4~6문장, 사주 근거 명시.",
-                "actions는 8~10개. 타임리스 삶의 방향 — '~하는 습관을 들이면 좋다', '~를 경계하라' 형태.",
+                "details는 정확히 3개. subtitle은 반드시 이 사람의 사주에서 구체적으로 읽히는 삶의 국면 이름이어야 한다. 예시(그대로 쓰지 말고 이 사주에 맞게 작성): '에너지를 소진하는 패턴', '재물이 손에 잡히지 않는 이유', '관계에서 반복되는 실수'. ❌절대 사용 금지: '핵심', '주의', '기회' (이 세 단어는 subtitle로 쓰면 오답임). content는 2~3문장, 반드시 일간·오행·십성 근거를 명시해 서술.",
+                "actions는 3~5개. 타임리스 삶의 방향 — '~하는 습관을 들이면 좋다', '~를 경계하라' 형태의 단문.",
+                "highlights 필수: JSON에서 highlights.elements에는 산문에서 직접 근거로 쓴 오행(wood/fire/earth/metal/water 중), highlights.ten_gods에는 언급한 십성(비견/식상/재성/관성/인성 중)을 반드시 채워야 한다. 빈 배열 금지.",
                 "pillars.day[0](일간 천간)을 반드시 특정하고 그 기운의 특성을 산문 출발점으로 삼을 것.",
-                "오행 중 가장 많은 것과 없거나 적은 것을 반드시 언급하고 그 불균형이 성격/삶에 미치는 영향을 구체적으로 서술.",
-                "ten_gods_summary에서 강한 성분을 인용해 기질 해석의 근거로 제시.",
                 "시간·날짜·주차·연도 언급 완전 금지 — 이 풀이는 평생 유효한 성격/기질 분석임.",
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
             ]
@@ -111,15 +114,20 @@ class GeminiNarrator:
                 "score": 50,
                 "details": [{"subtitle": "string", "content": "string"}],
                 "actions": ["string"],
+                "highlights": {
+                    "elements": ["fire", "metal"],
+                    "ten_gods": ["비견", "재성"],
+                },
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
                 f"  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이 사람과 {_domain}의 관계를 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
-                f"  [1단계: 산문 풀이] 타이틀 다음 줄부터 12~18문장의 한국어 산문. 이 사람의 {_domain} 기질·패턴·강약점을 팔자 근거로 서술. 마크다운/JSON 문법 금지.",
+                f"  [1단계: 산문 풀이] 타이틀 다음 줄부터 3~4문장의 한국어 산문. 이 사람의 {_domain} 핵심 패턴을 간결하게 서술. 마크다운/JSON 문법 금지.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
-                "details는 6~8개. subtitle은 기질·패턴·삶의 테마. content는 4~6문장, 사주 근거 명시.",
-                "actions는 8~10개. 타임리스 삶의 방향 — 이번 주/이번 달 언급 금지.",
+                f"details는 정확히 3개. subtitle 규칙: '핵심', '주의', '기회' 사용 절대 금지. 이 사람의 {_domain}에서 실제 읽히는 구체적 국면 이름을 붙여라 (예: '재물이 모이지 않는 구조적 이유', '관계에서 반복되는 패턴'). content는 2~3문장, 일간·오행·십성 근거 명시.",
+                "actions는 3~5개. 타임리스 삶의 방향 — 이번 주/이번 달 언급 금지.",
+                "highlights 필수: JSON에서 highlights.elements에는 산문에서 직접 근거로 쓴 오행(wood/fire/earth/metal/water 중), highlights.ten_gods에는 언급한 십성(비견/식상/재성/관성/인성 중)을 반드시 채워야 한다. 빈 배열 금지.",
                 "pillars.day[0](일간)을 출발점으로 삼아 해당 도메인 기질을 서술.",
                 "시간·날짜·주차·연도 언급 완전 금지 — 평생 유효한 기질 분석임.",
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시.",
@@ -131,15 +139,20 @@ class GeminiNarrator:
                 "score": "int(0-100)",
                 "details": [{"subtitle": "string", "content": "string"}],
                 "actions": ["string"],
+                "highlights": {
+                    "elements": ["wood", "fire"],
+                    "ten_gods": ["비견", "관성"],
+                },
             }
             content_rules = [
                 "출력은 반드시 세 단계로 구성한다:",
                 "  [0단계: 타이틀] 맨 첫 줄에 정확히 이 형식으로 출력(따옴표·공백 없이): [TITLE]이번 주 흐름을 표현하는 한 문장[/TITLE]. '기질' 단어 사용 금지.",
-                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 10~15문장의 한국어 산문. 핵심 흐름 + 구체적 상황 묘사 + 실용 조언. 마크다운/JSON 문법 금지.",
+                "  [1단계: 산문 풀이] 타이틀 다음 줄부터 3~4문장의 한국어 산문. 핵심 흐름과 실용 조언을 간결하게 서술. 마크다운/JSON 문법 금지.",
                 "  [구분자] 산문 마지막 줄 바로 다음 줄에 이 문자열을 정확히 출력(따옴표 없이): ---END_NARRATIVE---",
                 "  [2단계: JSON] 구분자 다음 줄부터 JSON 객체 출력. 마크다운 코드펜스 금지.",
-                "details는 6~8개, 각 content는 4~6문장으로 충분히 상세하게 작성",
-                "actions는 8~10개, 바로 실행 가능한 구체적 문장형 조언",
+                "details는 정확히 3개. subtitle은 반드시 이 사주에서 구체적으로 읽히는 국면 이름이어야 한다. 예시(그대로 쓰지 말고 이 사주에 맞게 작성): '에너지가 분산되는 시기', '관계에서 소모되기 쉬운 흐름', '결단보다 점검이 먼저'. ❌절대 사용 금지: '핵심', '주의', '기회' (이 세 단어는 subtitle로 쓰면 오답임). content는 2~3문장, 일간·오행·십성 근거를 명시해 서술.",
+                "actions는 3~5개. 바로 실행 가능한 구체적 단문형 조언.",
+                "highlights 필수: JSON에서 highlights.elements에는 산문에서 직접 근거로 쓴 오행(wood/fire/earth/metal/water 중), highlights.ten_gods에는 언급한 십성(비견/식상/재성/관성/인성 중)을 반드시 채워야 한다. 빈 배열 금지.",
                 "elements/ten_gods_summary/keywords/pillars를 근거로 자연스럽게 반영",
                 "같은 표현·유사 문장 반복 엄격히 금지 — 각 문장은 새로운 관점 제시",
                 f"period_label('{period_label}')을 활용해 '이번 주에는', '이번 주 흐름은' 등 자연스러운 표현 사용",
@@ -175,7 +188,7 @@ class GeminiNarrator:
             "week": "이번 주 전체 흐름 중심",
         }
 
-        output_rule = "출력 규칙: [TITLE]타이틀[/TITLE]\\n[산문 풀이]\\n---END_NARRATIVE---\\n[JSON 객체] 형식으로 출력. 마크다운/코드펜스 금지."
+        output_rule = "출력 규칙: 반드시 [TITLE]타이틀[/TITLE] 을 첫 번째 줄에 출력한 뒤, 산문 풀이, ---END_NARRATIVE---, JSON 객체 순서로 출력. 이 순서를 절대 바꾸지 말 것. 마크다운/코드펜스 금지."
         base_prompt = (
             "역할: 사주해의 전문 풀이 작성자.\n"
             "목표: 입력된 사주 요약 근거를 바탕으로, 사용자에게 실용적이고 과장 없는 해석을 제공합니다.\n"
@@ -198,11 +211,11 @@ class GeminiNarrator:
 
     def _request_payload(self, profile: ProfileResponse, feature_type: str, period_key: str, *, stream: bool = False) -> dict[str, Any]:
         max_tokens_map = {
-            "profile_detail": 8192,
-            "week": 8192,
-            "money": 8192,
-            "love": 8192,
-            "work": 8192,
+            "profile_detail": 3500,
+            "week": 3500,
+            "money": 3500,
+            "love": 3500,
+            "work": 3500,
         }
         config_kwargs: dict[str, Any] = {
             "temperature": 0.7,
