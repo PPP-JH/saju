@@ -305,7 +305,7 @@ function MySajuHub() {
     return (
       <div className={styles.loadingContainer}>
         <p className={styles.errorText}>{profileError ?? '프로필을 찾을 수 없습니다.'}</p>
-        <Link href="/input" className={styles.ctaLink}>사주 입력 페이지로 이동</Link>
+        <Link href="/" className={styles.ctaLink}>사주 입력 페이지로 이동</Link>
       </div>
     );
   }

@@ -2,8 +2,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-card-hover);
 }
-
 
 .nav {
   display: flex;
@@ -26,117 +26,132 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 1.5rem;
+  padding: 2rem 1rem;
 }
 
-/* ── Editorial hero ── */
+/* ── Page header ── */
 
-.editorial {
-  width: 100%;
-  max-width: 800px;
-  padding: 6rem 0 4rem;
-}
-
-.eyebrow {
-  font-family: var(--font-mono), monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--primary);
-  margin-bottom: 2rem;
-}
-
-.display {
-  font-family: var(--font-display), serif;
-  font-size: clamp(2.5rem, 7vw, 5rem);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--foreground);
-  margin-bottom: 2rem;
-}
-
-.body {
-  font-size: 1.125rem;
-  line-height: 1.7;
-  color: var(--foreground);
-  margin-bottom: 1rem;
-}
-
-.bodyMuted {
-  font-size: 0.9375rem;
-  line-height: 1.7;
-  color: var(--text-muted);
+.pageHeader {
+  text-align: center;
   margin-bottom: 2.5rem;
 }
 
-/* ── CTA stack ── */
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
 
-.ctaStack {
+.subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* ── Form card ── */
+
+.formCard {
+  width: 100%;
+  max-width: 500px;
+  background: var(--background);
+}
+
+.form {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 1.5rem;
 }
 
-.ctaRow {
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--foreground);
+}
+
+.inputText {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.inputText:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.radioGroup {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+.radioLabel,
+.checkboxLabel {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.primaryBtn,
-.secondaryBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 17rem;
-  padding: 0.75rem 1.5rem;
-  white-space: nowrap;
-  border-radius: var(--radius-md);
+  gap: 0.5rem;
   font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #fff;
+  cursor: pointer;
 }
 
-.primaryBtn {
-  background: var(--primary);
-  transition: background 0.15s ease-out;
+.dateRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
 }
 
-.primaryBtn:hover {
-  background: var(--primary-hover);
+.dateSelectorRow {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
 }
 
-.secondaryBtn {
-  background: var(--secondary);
-  transition: background 0.15s ease-out;
+.selectWrapper {
+  flex: 1;
 }
 
-.secondaryBtn:hover {
-  opacity: 0.88;
-}
-
-.ghostLink {
-  font-size: 0.9375rem;
+.hint {
+  font-size: 0.8125rem;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 1px;
-  transition: color 0.15s ease-out, border-color 0.15s ease-out;
+  margin-top: 0.25rem;
 }
 
-.ghostLink:hover {
-  color: var(--foreground);
-  border-color: var(--foreground);
-}
-
-.ghostLabel {
-  font-size: 0.9375rem;
+.optionalLabel {
+  font-size: 0.8125rem;
+  font-weight: 400;
   color: var(--text-muted);
 }
 
+.errorText {
+  color: #dc2626;
+  font-size: 0.875rem;
+}
 
+/* ── Action buttons ── */
+
+.buttonRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.actionBtn {
+  width: 100%;
+}
 
 /* ── Footer ── */
 
@@ -161,32 +176,12 @@
 /* ── Mobile ── */
 
 @media (max-width: 640px) {
-  .header {
-    padding: 1rem;
-  }
-
   .nav {
     gap: 1rem;
     font-size: 0.8125rem;
   }
 
-  .editorial {
-    padding: 4rem 0 3rem;
+  .main {
+    padding: 1.5rem 1rem;
   }
-
-  .ctaStack {
-    gap: 0.75rem;
-  }
-
-  .ctaRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .primaryBtn,
-  .secondaryBtn {
-    width: 100%;
-  }
-
 }

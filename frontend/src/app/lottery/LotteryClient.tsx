@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SelectBox } from '@/components/ui/SelectBox';
 import { SiteHeader } from '@/components/SiteHeader';
+import { getProfile, type ProfileResponse } from '@/lib/api';
 import styles from './page.module.css';
 
 // 오행 → 1~45 숫자 대응
@@ -46,6 +48,14 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+function hashString(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = Math.imul(hash, 33) ^ str.charCodeAt(i);
+  }
+  return Math.abs(hash);
+}
+
 function getYearElement(year: number): string {
   const mod = ((year % 10) + 10) % 10;
   if (mod === 4 || mod === 5) return 'wood';
@@ -77,20 +87,13 @@ function getTodayKey(): number {
   return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 }
 
-function generateNumbers(year: number, month: number, day: number): LotteryResult {
-  const primaryElement = getYearElement(year);
-  const secondaryElement = getMonthElement(month);
-
-  const birthSeed = year * 10000 + month * 100 + day;
-  const todaySeed = getTodayKey();
-  const seed = birthSeed ^ (todaySeed * 1000003);
-  const rand = seededRandom(seed);
-
-  const weightMap: Record<string, number> = { wood: 1, fire: 1, earth: 1, metal: 1, water: 1 };
-  weightMap[primaryElement] += 4;
-  if (secondaryElement !== primaryElement) {
-    weightMap[secondaryElement] += 2;
-  }
+function buildPool(
+  weightMap: Record<string, number>,
+  rand: () => number,
+): LotteryResult {
+  const primaryElement = Object.entries(weightMap).sort((a, b) => b[1] - a[1])[0][0];
+  const todayKey = getTodayKey();
+  void todayKey;
 
   const pool: number[] = [];
   for (const el of ['wood', 'fire', 'earth', 'metal', 'water']) {
@@ -113,58 +116,103 @@ function generateNumbers(year: number, month: number, day: number): LotteryResul
   }
 
   const pool7 = arr.slice(0, 7).sort((a, b) => a - b);
+  return { pool: pool7, comboA: pool7.slice(0, 6), comboB: pool7.slice(1, 7), primaryElement };
+}
 
-  return {
-    pool: pool7,
-    comboA: pool7.slice(0, 6),
-    comboB: pool7.slice(1, 7),
-    primaryElement,
+// 생년월일 기반 (프로필 없을 때 fallback)
+function generateNumbers(year: number, month: number, day: number): LotteryResult {
+  const primaryElement = getYearElement(year);
+  const secondaryElement = getMonthElement(month);
+  const birthSeed = year * 10000 + month * 100 + day;
+  const seed = birthSeed ^ (getTodayKey() * 1000003);
+  const rand = seededRandom(seed);
+
+  const weightMap: Record<string, number> = { wood: 1, fire: 1, earth: 1, metal: 1, water: 1 };
+  weightMap[primaryElement] += 4;
+  if (secondaryElement !== primaryElement) weightMap[secondaryElement] += 2;
+
+  return buildPool(weightMap, rand);
+}
+
+// 실제 사주 오행 기반
+function generateNumbersFromProfile(
+  profileId: string,
+  elements: ProfileResponse['elements'],
+): LotteryResult {
+  const seed = hashString(profileId) ^ (getTodayKey() * 1000003);
+  const rand = seededRandom(seed);
+
+  const weightMap: Record<string, number> = {
+    wood: Math.max(1, elements.wood),
+    fire: Math.max(1, elements.fire),
+    earth: Math.max(1, elements.earth),
+    metal: Math.max(1, elements.metal),
+    water: Math.max(1, elements.water),
   };
+
+  return buildPool(weightMap, rand);
 }
 
 const SESSION_KEY = 'saju_lottery_birth';
 
 type BirthForm = { year: string; month: string; day: string };
 
-export default function LotteryClient() {
+function LotteryContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState<BirthForm>({ year: '', month: '', day: '' });
   const [result, setResult] = useState<LotteryResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  // sessionStorage에서 생년월일 불러오기
   useEffect(() => {
+    const profileId = searchParams.get('profile_id');
+
+    if (profileId) {
+      setProfileLoading(true);
+      getProfile(profileId)
+        .then((profile) => {
+          try {
+            const saved = sessionStorage.getItem(SESSION_KEY);
+            if (saved) setForm(JSON.parse(saved) as BirthForm);
+          } catch { /* ignore */ }
+          setResult(generateNumbersFromProfile(profileId, profile.elements));
+        })
+        .catch(() => { /* ignore — fall through to form */ })
+        .finally(() => setProfileLoading(false));
+      return;
+    }
+
+    // standalone: load from sessionStorage
     try {
       const saved = sessionStorage.getItem(SESSION_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as BirthForm;
         if (parsed.year && parsed.month && parsed.day) {
           setForm(parsed);
-          setResult(generateNumbers(
-            parseInt(parsed.year),
-            parseInt(parsed.month),
-            parseInt(parsed.day),
-          ));
+          setResult(generateNumbers(parseInt(parsed.year), parseInt(parsed.month), parseInt(parsed.day)));
         }
       }
-    } catch {
-      // ignore
-    }
-  }, []);
+    } catch { /* ignore */ }
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.year || !form.month || !form.day) return;
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(form));
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     setResult(generateNumbers(parseInt(form.year), parseInt(form.month), parseInt(form.day)));
   };
 
   const handleReset = () => {
-    setResult(null);
-    setCopied(false);
+    const profileId = searchParams.get('profile_id');
+    if (profileId) {
+      router.push('/');
+    } else {
+      setResult(null);
+      setCopied(false);
+    }
   };
 
   const handleShare = async () => {
@@ -172,7 +220,7 @@ export default function LotteryClient() {
     const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
     const text = [
       `🎰 ${today} 사주 행운 번호`,
-      `${form.year}년생 ${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`,
+      form.year ? `${form.year}년생 ${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}` : `${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`,
       '',
       `추천 조합: ${result.comboA.join(' · ')}`,
       '',
@@ -180,21 +228,13 @@ export default function LotteryClient() {
     ].join('\n');
 
     if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ text });
-        return;
-      } catch {
-        // fallthrough to clipboard
-      }
+      try { await navigator.share({ text }); return; } catch { /* fallthrough */ }
     }
-
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   };
 
   const currentYear = new Date().getFullYear();
@@ -210,6 +250,17 @@ export default function LotteryClient() {
     const d = (i + 1).toString().padStart(2, '0');
     return { value: d, label: `${d}일` };
   });
+
+  if (profileLoading) {
+    return (
+      <div className={styles.container}>
+        <SiteHeader />
+        <main className={styles.main}>
+          <p className={styles.loadingText}>사주 오행을 불러오는 중...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -262,7 +313,7 @@ export default function LotteryClient() {
                   className={styles.submitBtn}
                   disabled={!form.year || !form.month || !form.day}
                 >
-                  행운 번호 뽑기
+                  행운 번호 보기
                 </Button>
               </form>
             </Card>
@@ -270,7 +321,8 @@ export default function LotteryClient() {
         ) : (
           <>
             <div className={styles.pageHeader}>
-              <p className={styles.eyebrow}>{form.year}년생 · {ELEMENT_NAMES[result.primaryElement]}</p>
+              {form.year && <p className={styles.eyebrow}>{form.year}년생 · {ELEMENT_NAMES[result.primaryElement]}</p>}
+              {!form.year && <p className={styles.eyebrow}>{ELEMENT_NAMES[result.primaryElement]}</p>}
               <h1 className={styles.title}>오늘의 행운 번호</h1>
               <p className={styles.subtitle}>{ELEMENT_DESC[result.primaryElement]}이 깃든 오늘의 번호입니다.</p>
             </div>
@@ -324,5 +376,20 @@ export default function LotteryClient() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function LotteryClient() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <SiteHeader />
+        <main className={styles.main}>
+          <p className={styles.loadingText}>불러오는 중...</p>
+        </main>
+      </div>
+    }>
+      <LotteryContent />
+    </Suspense>
   );
 }

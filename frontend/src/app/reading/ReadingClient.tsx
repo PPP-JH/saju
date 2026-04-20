@@ -172,7 +172,7 @@ export default function ReadingClient() {
         <main className={styles.main}>
           <div className={styles.centerBox}>
             <p className={styles.errorText}>{errorMessage}</p>
-            <Link href="/input" className={styles.ctaLink}>내 사주 입력하기</Link>
+            <Link href="/" className={styles.ctaLink}>내 사주 입력하기</Link>
           </div>
         </main>
       </div>
@@ -256,7 +256,7 @@ export default function ReadingClient() {
 
         <div className={styles.ctaSection}>
           <p className={styles.ctaHint}>내 사주를 더 자세히 알고 싶으신가요?</p>
-          <Link href="/input" className={styles.ctaBtn}>내 사주 보기</Link>
+          <Link href="/" className={styles.ctaBtn}>내 사주 보기</Link>
         </div>
       </main>
 

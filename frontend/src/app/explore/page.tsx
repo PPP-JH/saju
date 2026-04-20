@@ -30,7 +30,7 @@ export default function ExploreIndex() {
         <div className={styles.container}>
             <SiteHeader right={
                 <nav className={styles.nav}>
-                    <Link href="/input">내 사주 보기</Link>
+                    <Link href="/">내 사주 보기</Link>
                     <Link href="/story">사주 상식</Link>
                 </nav>
             } />
