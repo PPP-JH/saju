@@ -167,40 +167,60 @@ function ballColor(n: number): string {
   return '#b0d840';
 }
 
+// 번호 → 오행 매핑 (n%5: 0=토, 1=수, 2=화, 3=목, 4=금)
+function getElementForNumber(n: number): string {
+  const mod = n % 5;
+  if (mod === 0) return 'earth';
+  if (mod === 1) return 'water';
+  if (mod === 2) return 'fire';
+  if (mod === 3) return 'wood';
+  return 'metal';
+}
+
 type LotteryResult = {
-  pool: number[];
-  comboA: number[];
-  comboB: number[];
+  pool: number[];       // 9개
+  comboA: number[];     // 6개 (pool 0-5)
+  comboB: number[];     // 6개 (pool 2-7)
+  comboC: number[];     // 6개 (pool 3-8)
   primaryElement: string;
   todayElement: string;
-  elementWeights: Record<string, number>;
+  displayWeights: Record<string, number>;  // 바 차트용 (균형 보정 전)
   balanceElement: string | null;
 };
 
+// 가중 비복원 샘플링 — 오행 비율이 실제로 번호에 반영됨
 function buildPool(
   weightMap: Record<string, number>,
   rand: () => number,
-): { pool: number[]; comboA: number[]; comboB: number[] } {
-  const pool: number[] = [];
-  for (const el of ['wood', 'fire', 'earth', 'metal', 'water']) {
-    const weight = weightMap[el] ?? 1;
-    const nums = ELEMENT_NUMBERS[el];
-    for (let i = 0; i < weight; i++) {
-      pool.push(nums[Math.floor(rand() * nums.length)]);
+): { pool: number[]; comboA: number[]; comboB: number[]; comboC: number[] } {
+  // 1~45 각 번호에 오행 가중치 부여
+  const candidates: { n: number; w: number }[] = [];
+  for (let n = 1; n <= 45; n++) {
+    candidates.push({ n, w: weightMap[getElementForNumber(n)] ?? 1 });
+  }
+
+  const picked: number[] = [];
+  const remaining = [...candidates];
+
+  for (let i = 0; i < 9; i++) {
+    const total = remaining.reduce((s, x) => s + x.w, 0);
+    let r = rand() * total;
+    let idx = remaining.length - 1;
+    for (let j = 0; j < remaining.length; j++) {
+      r -= remaining[j].w;
+      if (r <= 0) { idx = j; break; }
     }
+    picked.push(remaining[idx].n);
+    remaining.splice(idx, 1);
   }
 
-  const set = new Set(pool);
-  while (set.size < 7) set.add(Math.floor(rand() * 45) + 1);
-
-  const arr = [...set];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-
-  const pool7 = arr.slice(0, 7).sort((a, b) => a - b);
-  return { pool: pool7, comboA: pool7.slice(0, 6), comboB: pool7.slice(1, 7) };
+  const pool = picked.sort((a, b) => a - b);
+  return {
+    pool,
+    comboA: pool.slice(0, 6),
+    comboB: pool.slice(2, 8),
+    comboC: pool.slice(3, 9),
+  };
 }
 
 function getYearElement(year: number): string {
@@ -228,17 +248,17 @@ function generateNumbers(year: number, month: number, day: number): LotteryResul
   const secondary = getMonthElement(month);
   const balance = getBalanceElement(primary, todayElement);
 
-  const baseWeights: Record<string, number> = { wood: 1, fire: 1, earth: 1, metal: 1, water: 1 };
-  baseWeights[primary] += 4;
-  if (secondary !== primary) baseWeights[secondary] += 2;
-  if (balance) baseWeights[balance] = (baseWeights[balance] ?? 1) + 2;
+  const displayWeights: Record<string, number> = { wood: 1, fire: 1, earth: 1, metal: 1, water: 1 };
+  displayWeights[primary] += 4;
+  if (secondary !== primary) displayWeights[secondary] += 2;
 
-  const birthSeed = year * 10000 + month * 100 + day;
-  const seed = birthSeed ^ (getTodayKey() * 1000003);
-  const rand = seededRandom(seed);
-  const { pool, comboA, comboB } = buildPool(baseWeights, rand);
+  const algoWeights = { ...displayWeights };
+  if (balance) algoWeights[balance] = (algoWeights[balance] ?? 1) + 2;
 
-  return { pool, comboA, comboB, primaryElement: primary, todayElement, elementWeights: baseWeights, balanceElement: balance };
+  const seed = (year * 10000 + month * 100 + day) ^ (getTodayKey() * 1000003);
+  const { pool, comboA, comboB, comboC } = buildPool(algoWeights, seededRandom(seed));
+
+  return { pool, comboA, comboB, comboC, primaryElement: primary, todayElement, displayWeights, balanceElement: balance };
 }
 
 function generateNumbersFromProfile(
@@ -246,29 +266,29 @@ function generateNumbersFromProfile(
   elements: ProfileResponse['elements'],
 ): LotteryResult {
   const todayElement = getTodayElement();
-  const sortedEntries = Object.entries(elements).sort((a, b) => b[1] - a[1]);
-  const primary = sortedEntries[0][0];
+  const primary = Object.entries(elements).sort((a, b) => b[1] - a[1])[0][0];
   const balance = getBalanceElement(primary, todayElement);
 
-  const weightMap: Record<string, number> = {
+  const displayWeights: Record<string, number> = {
     wood: Math.max(1, elements.wood),
     fire: Math.max(1, elements.fire),
     earth: Math.max(1, elements.earth),
     metal: Math.max(1, elements.metal),
     water: Math.max(1, elements.water),
   };
-  if (balance) weightMap[balance] = (weightMap[balance] ?? 1) + 2;
+
+  const algoWeights = { ...displayWeights };
+  if (balance) algoWeights[balance] = (algoWeights[balance] ?? 1) + 2;
 
   const seed = hashString(profileId) ^ (getTodayKey() * 1000003);
-  const rand = seededRandom(seed);
-  const { pool, comboA, comboB } = buildPool(weightMap, rand);
+  const { pool, comboA, comboB, comboC } = buildPool(algoWeights, seededRandom(seed));
 
-  return { pool, comboA, comboB, primaryElement: primary, todayElement, elementWeights: weightMap, balanceElement: balance };
+  return { pool, comboA, comboB, comboC, primaryElement: primary, todayElement, displayWeights, balanceElement: balance };
 }
 
 // ── UI 컴포넌트 ───────────────────────────────────────────
 
-function ElementBars({ weights }: { weights: Record<string, number> }) {
+function ElementBars({ weights }: { weights: Record<string, number>}) {
   const order = ['wood', 'fire', 'earth', 'metal', 'water'];
   const max = Math.max(...Object.values(weights));
   return (
@@ -448,7 +468,7 @@ function LotteryContent() {
               {/* 오행 설명 카드 */}
               <Card className={styles.explanationCard}>
                 <p className={styles.sectionLabel}>오행 분석</p>
-                <ElementBars weights={result.elementWeights} />
+                <ElementBars weights={result.displayWeights} />
 
                 <div className={styles.todayRow}>
                   <span className={styles.todayLabel}>오늘의 기운</span>
@@ -472,23 +492,16 @@ function LotteryContent() {
               </Card>
 
               <div className={styles.combos}>
-                <Card className={styles.comboCard}>
-                  <p className={styles.comboLabel}>추천 조합 A</p>
-                  <div className={styles.ballRow}>
-                    {result.comboA.map((n) => (
-                      <div key={n} className={styles.ball} style={{ backgroundColor: ballColor(n) }}>{n}</div>
-                    ))}
-                  </div>
-                </Card>
-
-                <Card className={styles.comboCard}>
-                  <p className={styles.comboLabel}>추천 조합 B</p>
-                  <div className={styles.ballRow}>
-                    {result.comboB.map((n) => (
-                      <div key={n} className={styles.ball} style={{ backgroundColor: ballColor(n) }}>{n}</div>
-                    ))}
-                  </div>
-                </Card>
+                {([['A', result.comboA], ['B', result.comboB], ['C', result.comboC]] as [string, number[]][]).map(([label, nums]) => (
+                  <Card key={label} className={styles.comboCard}>
+                    <p className={styles.comboLabel}>추천 조합 {label}</p>
+                    <div className={styles.ballRow}>
+                      {nums.map((n) => (
+                        <div key={n} className={styles.ball} style={{ backgroundColor: ballColor(n) }}>{n}</div>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
               </div>
 
               <p className={styles.notice}>오늘의 번호입니다. 내일 다시 확인하면 새 번호를 뽑아드립니다.</p>
