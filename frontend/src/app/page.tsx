@@ -36,13 +36,22 @@ export default function Home() {
             읽으면서 이해할 수 있습니다.
           </p>
 
-          <div className={styles.ctaRow}>
-            <Link href="/input" className={styles.primaryBtn}>
-              내 사주 풀이 보기 →
-            </Link>
-            <Link href="/story" className={styles.ghostLink}>
-              사주 상식 보기
-            </Link>
+          <div className={styles.ctaStack}>
+            <div className={styles.ctaRow}>
+              <Link href="/input" className={styles.primaryBtn}>
+                내 사주 풀이 보기 →
+              </Link>
+              <Link href="/story" className={styles.ghostLink}>
+                사주 상식 보기
+              </Link>
+            </div>
+
+            <div className={styles.ctaRow}>
+              <Link href="/lottery" className={styles.secondaryBtn}>
+                오늘의 사주 행운 번호 보기 →
+              </Link>
+              <span className={styles.ghostLabel}>오늘 나의 행운 번호를 확인해보세요</span>
+            </div>
           </div>
         </section>
 
