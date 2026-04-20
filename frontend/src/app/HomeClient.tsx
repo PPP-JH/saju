@@ -33,11 +33,13 @@ export default function HomeClient() {
   });
   const [loading, setLoading] = useState<'saju' | 'lottery' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
-  const isFormValid = !!formData.birth_year && !!formData.birth_month && !!formData.birth_day;
+  const isFormValid = !!formData.birth_year && !!formData.birth_month && !!formData.birth_day && privacyAgreed;
 
   const handleSubmit = async (destination: 'saju' | 'lottery') => {
-    if (!isFormValid) return;
+    if (!isFormValid || !privacyAgreed) return;
     setLoading(destination);
     setError(null);
 
@@ -208,6 +210,24 @@ export default function HomeClient() {
               />
             </div>
 
+            <div className={styles.privacyRow}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={privacyAgreed}
+                  onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                />
+                개인정보 수집·이용에 동의합니다
+              </label>
+              <button
+                type="button"
+                className={styles.privacyBtn}
+                onClick={() => setShowPrivacyModal(true)}
+              >
+                처리방침 보기
+              </button>
+            </div>
+
             {error && <p className={styles.errorText}>{error}</p>}
 
             <div className={styles.buttonRow}>
@@ -239,6 +259,55 @@ export default function HomeClient() {
       <footer className={styles.footer}>
         <Link href="/privacy" className={styles.footerLink}>개인정보처리방침</Link>
       </footer>
+
+      {showPrivacyModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowPrivacyModal(false)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>개인정보처리방침</h2>
+              <button className={styles.modalClose} onClick={() => setShowPrivacyModal(false)}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.modalUpdated}>최종 수정일: 2026년 4월 5일</p>
+
+              <h3>1. 수집하는 정보</h3>
+              <p>사주해(四柱解)는 사주 풀이 서비스 제공을 위해 다음 정보를 수집합니다.</p>
+              <ul>
+                <li>생년월일 및 출생 시간 (사주 계산 목적)</li>
+                <li>성별 (사주 계산 목적)</li>
+                <li>서비스 이용 기록 및 서버 접속 로그</li>
+              </ul>
+              <p>회원 가입이나 이메일 수집은 없습니다. 생성된 프로필 식별자(profile_id)는 브라우저 localStorage에 저장됩니다.</p>
+
+              <h3>2. 정보의 이용 목적</h3>
+              <ul>
+                <li>사주 풀이 결과 생성 및 제공</li>
+                <li>이전 풀이 결과 재조회</li>
+                <li>서비스 품질 개선</li>
+              </ul>
+
+              <h3>3. 제3자 광고 서비스</h3>
+              <p>
+                본 사이트는 Google LLC가 제공하는 Google AdSense를 사용합니다. 사용자의 관심사에 맞는 광고 제공을 위해 쿠키를 사용할 수 있습니다.
+              </p>
+
+              <h3>4. 정보의 보유 및 파기</h3>
+              <p>수집된 정보는 서비스 제공 목적이 달성될 때까지 보관하며, 이용자가 삭제를 요청하거나 서비스가 종료되는 경우 지체 없이 파기합니다.</p>
+
+              <h3>5. 문의</h3>
+              <p>이메일: syntec3333@gmail.com</p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.modalAgreeBtn}
+                onClick={() => { setPrivacyAgreed(true); setShowPrivacyModal(false); }}
+              >
+                동의하고 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
