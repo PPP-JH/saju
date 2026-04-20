@@ -171,3 +171,17 @@
     margin: 0 auto;
     padding: 2rem 1.5rem 4rem;
 }
+
+
+.luckyLink {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.luckyLink:hover {
+    text-decoration: underline;
+}

@@ -8,6 +8,7 @@ export default function Home() {
       <SiteHeader right={
         <nav className={styles.nav}>
           <Link href="/input">내 사주 보기</Link>
+          <Link href="/lottery">행운 번호</Link>
           <Link href="/story">사주 상식</Link>
           <Link href="/glossary">용어 사전</Link>
         </nav>

@@ -326,6 +326,7 @@ function MySajuHub() {
               <span key={`${kw}-${i}`} className={styles.chip}>#{kw}</span>
             ))}
           </div>
+          <Link href="/lottery" className={styles.luckyLink}>🎰 행운 번호 뽑기 →</Link>
         </section>
 
         <nav className={styles.tabNavWrapper}>

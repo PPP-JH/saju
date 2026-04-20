@@ -39,6 +39,11 @@ export default function InputPage() {
       });
 
       localStorage.setItem('saju_profile_id', response.profile_id);
+      sessionStorage.setItem('saju_lottery_birth', JSON.stringify({
+        year: formData.birth_year,
+        month: formData.birth_month,
+        day: formData.birth_day,
+      }));
       router.push(`/saju?profile_id=${encodeURIComponent(response.profile_id)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '프로필 생성 중 오류가 발생했습니다.');
