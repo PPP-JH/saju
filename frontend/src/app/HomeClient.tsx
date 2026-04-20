@@ -277,7 +277,7 @@ export default function HomeClient() {
                 <li>성별 (사주 계산 목적)</li>
                 <li>서비스 이용 기록 및 서버 접속 로그</li>
               </ul>
-              <p>회원 가입이나 이메일 수집은 없습니다. 생성된 프로필 식별자(profile_id)는 브라우저 localStorage에 저장됩니다.</p>
+              <p>회원 가입이나 이메일 수집은 없습니다.</p>
 
               <h3>2. 정보의 이용 목적</h3>
               <ul>
@@ -286,15 +286,10 @@ export default function HomeClient() {
                 <li>서비스 품질 개선</li>
               </ul>
 
-              <h3>3. 제3자 광고 서비스</h3>
-              <p>
-                본 사이트는 Google LLC가 제공하는 Google AdSense를 사용합니다. 사용자의 관심사에 맞는 광고 제공을 위해 쿠키를 사용할 수 있습니다.
-              </p>
-
-              <h3>4. 정보의 보유 및 파기</h3>
+              <h3>3. 정보의 보유 및 파기</h3>
               <p>수집된 정보는 서비스 제공 목적이 달성될 때까지 보관하며, 이용자가 삭제를 요청하거나 서비스가 종료되는 경우 지체 없이 파기합니다.</p>
 
-              <h3>5. 문의</h3>
+              <h3>4. 문의</h3>
               <p>이메일: syntec3333@gmail.com</p>
             </div>
             <div className={styles.modalFooter}>
