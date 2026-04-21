@@ -6,17 +6,10 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getProfile, type ProfileResponse } from '@/lib/api';
+import { ELEMENT_NUMBERS, ballColor, seededRandom } from '@/lib/lottery-utils';
 import styles from './page.module.css';
 
 // ── 오행 기본 데이터 ──────────────────────────────────────
-
-const ELEMENT_NUMBERS: Record<string, number[]> = {
-  wood:  [3, 8, 13, 18, 23, 28, 33, 38, 43],
-  fire:  [2, 7, 12, 17, 22, 27, 32, 37, 42],
-  earth: [5, 10, 15, 20, 25, 30, 35, 40, 45],
-  metal: [4, 9, 14, 19, 24, 29, 34, 39, 44],
-  water: [1, 6, 11, 16, 21, 26, 31, 36, 41],
-};
 
 const ELEMENT_NAMES: Record<string, string> = {
   wood: '목(木)', fire: '화(火)', earth: '토(土)', metal: '금(金)', water: '수(水)',
@@ -138,16 +131,6 @@ function buildExplanation(primary: string, today: string): string {
 
 // ── 난수 & 풀 생성 ────────────────────────────────────────
 
-function seededRandom(seed: number): () => number {
-  let s = seed | 0;
-  return () => {
-    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
-    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
-    s ^= s >>> 16;
-    return (s >>> 0) / 0x100000000;
-  };
-}
-
 function hashString(str: string): number {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
@@ -161,13 +144,6 @@ function getTodayKey(): number {
   return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 }
 
-function ballColor(n: number): string {
-  if (n <= 10) return '#fbc400';
-  if (n <= 20) return '#69c8f2';
-  if (n <= 30) return '#ff7272';
-  if (n <= 40) return '#aaaaaa';
-  return '#b0d840';
-}
 
 // 번호 → 오행 매핑 (n%5: 0=토, 1=수, 2=화, 3=목, 4=금)
 function getElementForNumber(n: number): string {

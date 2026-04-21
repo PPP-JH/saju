@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import LotteryClient from './LotteryClient';
-import styles from './page.module.css';
 
 export const metadata: Metadata = {
   title: '사주 로또 번호 추천 | 사주해',
@@ -13,13 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function LotteryPage() {
-  return (
-    <Suspense fallback={
-      <div className={styles.loadingContainer}>
-        <p className={styles.loadingText}>번호를 계산하는 중...</p>
-      </div>
-    }>
-      <LotteryClient />
-    </Suspense>
-  );
+  return <LotteryClient />;
 }
