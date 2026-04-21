@@ -54,15 +54,6 @@ export default function HomeClient() {
       });
 
       localStorage.setItem('saju_profile_id', response.profile_id);
-      try {
-        sessionStorage.setItem('saju_lottery_birth', JSON.stringify({
-          year: formData.birth_year,
-          month: formData.birth_month,
-          day: formData.birth_day,
-        }));
-      } catch {
-        // ignore
-      }
 
       if (destination === 'saju') {
         router.push(`/saju?profile_id=${encodeURIComponent(response.profile_id)}`);

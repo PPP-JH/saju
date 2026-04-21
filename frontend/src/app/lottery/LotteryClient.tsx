@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { SelectBox } from '@/components/ui/SelectBox';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getProfile, type ProfileResponse } from '@/lib/api';
 import styles from './page.module.css';
@@ -226,43 +225,6 @@ function buildPool(
   };
 }
 
-function getYearElement(year: number): string {
-  const mod = ((year % 10) + 10) % 10;
-  if (mod === 4 || mod === 5) return 'wood';
-  if (mod === 6 || mod === 7) return 'fire';
-  if (mod === 8 || mod === 9) return 'earth';
-  if (mod === 0 || mod === 1) return 'metal';
-  return 'water';
-}
-
-function getMonthElement(month: number): string {
-  const map: Record<number, string> = {
-    1: 'wood', 2: 'wood', 3: 'earth',
-    4: 'fire', 5: 'fire', 6: 'earth',
-    7: 'metal', 8: 'metal', 9: 'earth',
-    10: 'water', 11: 'water', 12: 'earth',
-  };
-  return map[month];
-}
-
-function generateNumbers(year: number, month: number, day: number): LotteryResult {
-  const todayElement = getTodayElement();
-  const primary = getYearElement(year);
-  const secondary = getMonthElement(month);
-  const balance = getBalanceElement(primary, todayElement);
-
-  const displayWeights: Record<string, number> = { wood: 1, fire: 1, earth: 1, metal: 1, water: 1 };
-  displayWeights[primary] += 4;
-  if (secondary !== primary) displayWeights[secondary] += 2;
-
-  const algoWeights = { ...displayWeights };
-  if (balance) algoWeights[balance] = (algoWeights[balance] ?? 1) + 2;
-
-  const seed = (year * 10000 + month * 100 + day) ^ (getTodayKey() * 1000003);
-  const { pool, comboA, comboB, comboC } = buildPool(algoWeights, seededRandom(seed));
-
-  return { pool, comboA, comboB, comboC, primaryElement: primary, todayElement, displayWeights, balanceElement: balance };
-}
 
 function generateNumbersFromProfile(
   profileId: string,
@@ -316,61 +278,30 @@ function ElementBars({ weights }: { weights: Record<string, number>}) {
 
 // ── 메인 컴포넌트 ──────────────────────────────────────────
 
-const SESSION_KEY = 'saju_lottery_birth';
-type BirthForm = { year: string; month: string; day: string };
-
 function LotteryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [form, setForm] = useState<BirthForm>({ year: '', month: '', day: '' });
   const [result, setResult] = useState<LotteryResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     const profileId = searchParams.get('profile_id');
-
-    if (profileId) {
-      setProfileLoading(true);
-      getProfile(profileId)
-        .then((profile) => {
-          try {
-            const saved = sessionStorage.getItem(SESSION_KEY);
-            if (saved) setForm(JSON.parse(saved) as BirthForm);
-          } catch { /* ignore */ }
-          setResult(generateNumbersFromProfile(profileId, profile.elements));
-        })
-        .catch(() => { /* fall through to form */ })
-        .finally(() => setProfileLoading(false));
+    if (!profileId) {
+      router.replace('/');
       return;
     }
-
-    try {
-      const saved = sessionStorage.getItem(SESSION_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as BirthForm;
-        if (parsed.year && parsed.month && parsed.day) {
-          setForm(parsed);
-          setResult(generateNumbers(parseInt(parsed.year), parseInt(parsed.month), parseInt(parsed.day)));
-        }
-      }
-    } catch { /* ignore */ }
-  }, [searchParams]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.year || !form.month || !form.day) return;
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(form)); } catch { /* ignore */ }
-    setResult(generateNumbers(parseInt(form.year), parseInt(form.month), parseInt(form.day)));
-  };
+    setProfileLoading(true);
+    getProfile(profileId)
+      .then((profile) => {
+        setResult(generateNumbersFromProfile(profileId, profile.elements));
+      })
+      .catch(() => { router.replace('/'); })
+      .finally(() => setProfileLoading(false));
+  }, [searchParams, router]);
 
   const handleReset = () => {
-    if (searchParams.get('profile_id')) {
-      router.push('/');
-    } else {
-      setResult(null);
-      setCopied(false);
-    }
+    router.push('/');
   };
 
   const handleShare = async () => {
@@ -378,9 +309,7 @@ function LotteryContent() {
     const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
     const text = [
       `🎰 ${today} 사주 행운 번호`,
-      form.year
-        ? `${form.year}년생 ${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`
-        : `${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`,
+      `${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`,
       '',
       `추천 조합: ${result.comboA.join(' · ')}`,
       '',
@@ -396,20 +325,6 @@ function LotteryContent() {
       setTimeout(() => setCopied(false), 2000);
     } catch { /* ignore */ }
   };
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 100 }, (_, i) => {
-    const y = (currentYear - i).toString();
-    return { value: y, label: `${y}년` };
-  });
-  const monthOptions = Array.from({ length: 12 }, (_, i) => {
-    const m = (i + 1).toString().padStart(2, '0');
-    return { value: m, label: `${m}월` };
-  });
-  const dayOptions = Array.from({ length: 31 }, (_, i) => {
-    const d = (i + 1).toString().padStart(2, '0');
-    return { value: d, label: `${d}일` };
-  });
 
   if (profileLoading) {
     return (
@@ -427,43 +342,13 @@ function LotteryContent() {
       <SiteHeader />
 
       <main className={styles.main}>
-        {!result ? (
-          <>
-            <div className={styles.pageHeader}>
-              <h1 className={styles.title}>사주 행운 번호</h1>
-              <p className={styles.subtitle}>생년월일의 오행 기운으로 이번 주 행운 번호를 뽑아드립니다.</p>
-            </div>
-
-            <Card className={styles.formCard}>
-              <form onSubmit={handleSubmit} className={styles.form}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>생년월일</label>
-                  <div className={styles.dateRow}>
-                    <div className={styles.selectWrapper}>
-                      <SelectBox options={yearOptions} value={form.year} onChange={(v) => setForm((p) => ({ ...p, year: v }))} placeholder="연도" />
-                    </div>
-                    <div className={styles.selectWrapper}>
-                      <SelectBox options={monthOptions} value={form.month} onChange={(v) => setForm((p) => ({ ...p, month: v }))} placeholder="월" />
-                    </div>
-                    <div className={styles.selectWrapper}>
-                      <SelectBox options={dayOptions} value={form.day} onChange={(v) => setForm((p) => ({ ...p, day: v }))} placeholder="일" />
-                    </div>
-                  </div>
-                </div>
-
-                <Button type="submit" variant="primary" size="lg" className={styles.submitBtn} disabled={!form.year || !form.month || !form.day}>
-                  행운 번호 보기
-                </Button>
-              </form>
-            </Card>
-          </>
-        ) : (() => {
+        {result && (() => {
           const explanation = buildExplanation(result.primaryElement, result.todayElement);
           return (
             <>
               <div className={styles.pageHeader}>
                 <p className={styles.eyebrow}>
-                  {form.year ? `${form.year}년생 · ` : ''}{ELEMENT_NAMES[result.primaryElement]}
+                  {ELEMENT_NAMES[result.primaryElement]}
                 </p>
                 <h1 className={styles.title}>오늘의 행운 번호</h1>
               </div>
@@ -521,6 +406,7 @@ function LotteryContent() {
           );
         })()}
       </main>
+
     </div>
   );
 }
