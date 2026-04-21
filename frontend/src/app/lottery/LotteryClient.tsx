@@ -35,7 +35,7 @@ const ELEMENT_COLOR: Record<string, string> = {
   wood: '#4caf50',
   fire: '#f44336',
   earth: '#ff9800',
-  metal: '#9e9e9e',
+  metal: '#607d8b',
   water: '#2196f3',
 };
 
