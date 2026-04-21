@@ -93,45 +93,48 @@ function getBalanceElement(primary: string, today: string): string | null {
   }
 }
 
-type ExplanationText = {
-  userLine: string;
-  todayLine: string;
-  reasoning: string;
+// 25가지 조합 설명 텍스트 (사용자 주 오행 × 오늘 오행)
+// generates: 보강 오행 = GENERATED_BY[user] / overcome_by: 보강 오행 = OVERCOME_BY[today]
+const EXPLANATIONS: Record<string, Record<string, string>> = {
+  wood: {
+    wood:  '목(木) 기운이 오늘도 겹쳐 성장의 에너지가 두 배가 되는 날입니다. 목 번호 위주로 구성했습니다.',
+    fire:  '목(木)은 화(火)를 生합니다. 기운을 내어주는 날이니, 목을 채워주는 수(水) 번호를 더했습니다.',
+    earth: '목(木)이 토(土)를 克하는 날입니다. 의지가 강하게 발휘되는 날, 목 번호 위주로 힘차게 구성했습니다.',
+    metal: '오늘의 금(金)이 목(木)을 克합니다. 눌리는 기운에 맞서, 금을 제압하는 화(火) 번호를 보강했습니다.',
+    water: '오늘의 수(水)가 목(木)을 生합니다. 기운을 받는 날, 충만해진 목 번호를 중심으로 뽑았습니다.',
+  },
+  fire: {
+    wood:  '오늘의 목(木)이 화(火)를 生합니다. 에너지를 받는 날, 화 기운이 더욱 강해집니다. 화 번호 중심으로 구성했습니다.',
+    fire:  '화(火) 기운이 오늘도 겹쳐 열정이 두 배로 타오르는 날입니다. 화 번호 위주로 구성했습니다.',
+    earth: '화(火)는 토(土)를 生합니다. 기운을 소진하는 날이니, 화를 채워주는 목(木) 번호를 더했습니다.',
+    metal: '화(火)가 금(金)을 克하는 날입니다. 단단한 것을 녹이는 힘이 강한 날, 화 번호 위주로 구성했습니다.',
+    water: '오늘의 수(水)가 화(火)를 克합니다. 눌리는 기운에 맞서, 수를 막는 토(土) 번호를 보강했습니다.',
+  },
+  earth: {
+    wood:  '오늘의 목(木)이 토(土)를 克합니다. 눌리는 기운에 맞서, 목을 제압하는 금(金) 번호를 보강했습니다.',
+    fire:  '오늘의 화(火)가 토(土)를 生합니다. 따뜻한 기운을 받아 토가 더욱 단단해지는 날입니다. 토 번호 중심으로 구성했습니다.',
+    earth: '토(土) 기운이 오늘도 겹쳐 안정과 신뢰의 기운이 두 배가 되는 날입니다. 토 번호 위주로 구성했습니다.',
+    metal: '토(土)는 금(金)을 生합니다. 결실을 맺어주는 날이니, 토를 채워주는 화(火) 번호를 더했습니다.',
+    water: '토(土)가 수(水)를 克하는 날입니다. 흐름을 다스리는 힘이 강한 날, 토 번호 위주로 구성했습니다.',
+  },
+  metal: {
+    wood:  '금(金)이 목(木)을 克하는 날입니다. 날카로운 결단이 빛을 발하는 날, 금 번호 위주로 힘차게 구성했습니다.',
+    fire:  '오늘의 화(火)가 금(金)을 克합니다. 눌리는 기운에 맞서, 화를 제압하는 수(水) 번호를 보강했습니다.',
+    earth: '오늘의 토(土)가 금(金)을 生합니다. 땅이 금을 품어 기운을 키워주는 날입니다. 금 번호 중심으로 구성했습니다.',
+    metal: '금(金) 기운이 오늘도 겹쳐 결단과 집중의 기운이 두 배가 되는 날입니다. 금 번호 위주로 구성했습니다.',
+    water: '금(金)은 수(水)를 生합니다. 기운을 내어주는 날이니, 금을 채워주는 토(土) 번호를 더했습니다.',
+  },
+  water: {
+    wood:  '수(水)는 목(木)을 生합니다. 기운을 소진하는 날이니, 수를 채워주는 금(金) 번호를 더했습니다.',
+    fire:  '수(水)가 화(火)를 克하는 날입니다. 불을 다스리는 힘이 강한 날, 수 번호 위주로 구성했습니다.',
+    earth: '오늘의 토(土)가 수(水)를 克합니다. 눌리는 기운에 맞서, 토를 제압하는 목(木) 번호를 보강했습니다.',
+    metal: '오늘의 금(金)이 수(水)를 生합니다. 금이 녹아 물이 되듯 기운을 받는 날입니다. 수 번호 중심으로 구성했습니다.',
+    water: '수(水) 기운이 오늘도 겹쳐 지혜와 유연함의 기운이 두 배가 되는 날입니다. 수 번호 위주로 구성했습니다.',
+  },
 };
 
-function buildExplanation(
-  primary: string,
-  today: string,
-  balance: string | null,
-): ExplanationText {
-  const rel = getRelationship(primary, today);
-  const uName = ELEMENT_NAMES[primary];
-  const tName = ELEMENT_NAMES[today];
-  const bName = balance ? ELEMENT_NAMES[balance] : null;
-
-  const userLine = `사주의 주요 기운은 ${uName}입니다.`;
-  const todayLine = `오늘은 ${tName}의 기운이 흐르는 날입니다.`;
-
-  let reasoning: string;
-  switch (rel) {
-    case 'same':
-      reasoning = `${uName} 기운이 오늘도 겹쳐 힘이 두 배가 되는 날입니다. ${uName} 번호 위주로 구성했습니다.`;
-      break;
-    case 'generates':
-      reasoning = `${uName}은 ${tName}을 생(生)하여 기운을 내어주는 날입니다. 소진되는 기운을 보충하기 위해 ${bName} 번호를 더했습니다.`;
-      break;
-    case 'generated_by':
-      reasoning = `오늘의 ${tName}이 ${uName}을 생(生)하여 기운을 받는 날입니다. 흐름이 좋으니 ${uName} 번호를 중심으로 구성했습니다.`;
-      break;
-    case 'overcomes':
-      reasoning = `${uName}이 오늘의 ${tName}을 극(克)하는 날입니다. 의지가 강하게 발휘되는 날로 ${uName} 번호 중심으로 뽑았습니다.`;
-      break;
-    case 'overcome_by':
-      reasoning = `오늘의 ${tName}이 ${uName}을 극(克)하는 날입니다. 균형을 맞추기 위해 ${tName}을 누르는 ${bName} 번호를 보강했습니다.`;
-      break;
-  }
-
-  return { userLine, todayLine, reasoning };
+function buildExplanation(primary: string, today: string): string {
+  return EXPLANATIONS[primary]?.[today] ?? `${ELEMENT_NAMES[primary]} 기운을 중심으로 오늘의 번호를 구성했습니다.`;
 }
 
 // ── 난수 & 풀 생성 ────────────────────────────────────────
@@ -455,7 +458,7 @@ function LotteryContent() {
             </Card>
           </>
         ) : (() => {
-          const explanation = buildExplanation(result.primaryElement, result.todayElement, result.balanceElement);
+          const explanation = buildExplanation(result.primaryElement, result.todayElement);
           return (
             <>
               <div className={styles.pageHeader}>
@@ -478,7 +481,7 @@ function LotteryContent() {
                   <span className={styles.todayDesc}>{ELEMENT_DESC[result.todayElement]}</span>
                 </div>
 
-                <p className={styles.explanationText}>{explanation.reasoning}</p>
+                <p className={styles.explanationText}>{explanation}</p>
               </Card>
 
               {/* 번호 풀 */}
