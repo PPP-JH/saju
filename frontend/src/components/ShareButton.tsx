@@ -47,7 +47,7 @@ export function ShareButton({ numbers, profile }: Props) {
 
   function handleShare() {
     const origin = window.location.origin;
-    const ogUrl = `${origin}/api/og?numbers=${numbers.join(',')}&element=${element}`;
+    const ogUrl = `${origin}/og?numbers=${numbers.join(',')}&element=${element}`;
 
     if (sdkReady.current && window.Kakao?.Share) {
       window.Kakao.Share.sendDefault({
