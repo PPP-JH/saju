@@ -1,23 +1,21 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === "development";
+// In dev: Next.js(3000) → FastAPI(8000). In prod: Next.js(8000) → FastAPI(3001 internal).
+const internalApiUrl =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "http://127.0.0.1:3001";
 
 const nextConfig: NextConfig = {
-  // Static export for production (served by FastAPI).
-  // Omitted in dev so Next.js server mode is used and rewrites work.
-  ...(isDev ? {} : { output: "export" }),
-
-  // In dev, proxy /api/* to the FastAPI backend so there's no CORS preflight.
-  ...(isDev && {
-    async rewrites() {
-      return [
-        {
-          source: "/api/:path*",
-          destination: "http://localhost:8000/api/:path*",
-        },
-      ];
-    },
-  }),
+  output: "standalone",
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${internalApiUrl}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

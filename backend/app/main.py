@@ -5,11 +5,10 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from .db import init_db
 from .llm import narrator
@@ -318,27 +317,3 @@ async def submit_feedback(payload: FeedbackCreateRequest) -> FeedbackResponse:
     return FeedbackResponse(success=True)
 
 
-# ── Frontend static file serving ──────────────────────────────────────────────
-# Serves the Next.js static export (out/) that is copied into the container.
-# Falls back to the route's .html file, then index.html for unknown paths.
-
-_STATIC_DIR = Path(__file__).parent.parent / "out"
-
-
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request, full_path: str) -> FileResponse:
-    if not _STATIC_DIR.exists():
-        raise HTTPException(status_code=404, detail="Frontend not built")
-
-    # Exact file match (_next/static/**, favicon.ico, etc.)
-    candidate = _STATIC_DIR / full_path
-    if candidate.is_file():
-        return FileResponse(candidate)
-
-    # Route with .html extension (/saju → out/saju.html)
-    html_candidate = _STATIC_DIR / f"{full_path}.html"
-    if html_candidate.is_file():
-        return FileResponse(html_candidate)
-
-    # Root path or unknown → index.html
-    return FileResponse(_STATIC_DIR / "index.html")
