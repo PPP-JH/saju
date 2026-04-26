@@ -47,7 +47,9 @@ export function ShareButton({ numbers, profile }: Props) {
 
   function handleShare() {
     const origin = window.location.origin;
-    const ogUrl = `${origin}/og?numbers=${numbers.join(',')}&element=${element}`;
+    // Always use www canonical URL for imageUrl — sajuhae.com 301-redirects and Kakao crawler doesn't follow redirects
+    const canonicalOrigin = 'https://www.sajuhae.com';
+    const ogUrl = `${canonicalOrigin}/og?numbers=${numbers.join(',')}&element=${element}`;
 
     if (sdkReady.current && window.Kakao?.Share) {
       window.Kakao.Share.sendDefault({
