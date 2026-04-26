@@ -26,13 +26,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
             ghcr.io/ppp-jh/saju:latest
             ghcr.io/ppp-jh/saju:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_KAKAO_APP_KEY=${{ secrets.NEXT_PUBLIC_KAKAO_APP_KEY }}
 
       - name: Trigger Render deploy
         if: ${{ env.HOOK_URL != '' }}

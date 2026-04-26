@@ -1,5 +1,5 @@
 # Stage 1: Build Next.js frontend
-FROM node:20-slim AS frontend-builder
+FROM node:24-slim AS frontend-builder
 WORKDIR /frontend
 
 COPY frontend/package*.json ./
@@ -8,6 +8,8 @@ RUN npm ci
 COPY frontend/ .
 # API calls use relative path (same origin) in production
 ENV NEXT_PUBLIC_API_BASE_URL=""
+ARG NEXT_PUBLIC_KAKAO_APP_KEY
+ENV NEXT_PUBLIC_KAKAO_APP_KEY=$NEXT_PUBLIC_KAKAO_APP_KEY
 RUN npm run build
 
 
