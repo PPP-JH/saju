@@ -4,7 +4,7 @@ import hashlib
 import logging
 import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from threading import Lock
 from uuid import NAMESPACE_URL, uuid5
 
@@ -354,6 +354,50 @@ class DatabaseStore:
             if not row:
                 return None
             return ProfileResponse.model_validate(row.computed_json)
+
+    def get_or_create_share_tagline(self, profile_id: str) -> str | None:
+        period_key = date.today().strftime("%Y-W%W")
+        bundle = self.get_profile_bundle(profile_id)
+        if bundle is None:
+            return None
+        profile, input_hash = bundle
+
+        cache_key = self._build_cache_key(input_hash, "share_tagline", period_key)
+
+        with SessionLocal() as db:
+            row = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+            if row:
+                return row.result_json.get("tagline")
+
+        result = narrator.generate_result(profile, "share_tagline", period_key)
+        tagline = result.get("tagline") if result else None
+
+        if not tagline:
+            dominant = max(profile.elements.model_dump().items(), key=lambda x: x[1])[0]
+            fallbacks = {
+                "wood": "창의적인 에너지가 넘쳐흐르는 시기예요",
+                "fire": "열정이 빛을 발하는 한 주예요",
+                "earth": "안정 속에서 기회가 찾아오는 시기예요",
+                "metal": "결단력이 빛나는 한 주예요",
+                "water": "직관을 믿고 나아가면 좋은 시기예요",
+            }
+            tagline = fallbacks.get(dominant, "행운이 함께하는 한 주예요")
+
+        read_id = self._build_read_id(cache_key)
+        with self._lock:
+            with SessionLocal() as db:
+                existing = db.scalar(select(FortuneRead).where(FortuneRead.cache_key == cache_key))
+                if not existing:
+                    db.add(FortuneRead(
+                        read_id=read_id,
+                        cache_key=cache_key,
+                        profile_id=profile_id,
+                        feature_type="share_tagline",
+                        period_key=period_key,
+                        result_json={"tagline": tagline},
+                    ))
+                    db.commit()
+        return tagline
 
     def get_profile_bundle(self, profile_id: str) -> tuple[ProfileResponse, str] | None:
         with SessionLocal() as db:

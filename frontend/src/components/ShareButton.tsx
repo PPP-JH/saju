@@ -7,6 +7,7 @@ import type { ProfileResponse } from '@/lib/api';
 type Props = {
   numbers: number[];
   profile: ProfileResponse;
+  tagline: string | null;
 };
 
 declare global {
@@ -21,7 +22,7 @@ declare global {
   }
 }
 
-export function ShareButton({ numbers, profile }: Props) {
+export function ShareButton({ numbers, profile, tagline }: Props) {
   const [copied, setCopied] = useState(false);
   const sdkReady = useRef(false);
 
@@ -43,25 +44,26 @@ export function ShareButton({ numbers, profile }: Props) {
   }, []);
 
   const element = dominantElement(profile.elements);
-  const tagline = OHAENG_TAGLINE[element];
+  const description = tagline ?? OHAENG_TAGLINE[element];
 
   function handleShare() {
     const origin = window.location.origin;
     // Always use www canonical URL for imageUrl — sajuhae.com 301-redirects and Kakao crawler doesn't follow redirects
     const canonicalOrigin = 'https://www.sajuhae.com';
     const ogUrl = `${canonicalOrigin}/og?numbers=${numbers.join(',')}&element=${element}`;
+    const shareUrl = `${canonicalOrigin}/lottery?profile_id=${profile.profile_id}&shared=1`;
 
     if (sdkReady.current && window.Kakao?.Share) {
       window.Kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
           title: '내 이번 주 행운의 번호',
-          description: tagline,
+          description: description,
           imageUrl: ogUrl,
-          link: { webUrl: origin, mobileWebUrl: origin },
+          link: { webUrl: shareUrl, mobileWebUrl: shareUrl },
         },
         buttons: [
-          { title: '나도 뽑기', link: { webUrl: origin, mobileWebUrl: origin } },
+          { title: '나도 뽑기', link: { webUrl: canonicalOrigin, mobileWebUrl: canonicalOrigin } },
         ],
       });
       return;
@@ -69,9 +71,9 @@ export function ShareButton({ numbers, profile }: Props) {
 
     // 폴백: Web Share API → 클립보드
     if (navigator.share) {
-      navigator.share({ title: '내 이번 주 행운의 번호', text: tagline, url: origin });
+      navigator.share({ title: '내 이번 주 행운의 번호', text: description, url: shareUrl });
     } else {
-      navigator.clipboard.writeText(origin).then(() => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });

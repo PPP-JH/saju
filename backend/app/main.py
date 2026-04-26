@@ -68,6 +68,14 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/share/{profile_id}")
+async def get_share_data(profile_id: str) -> dict:
+    tagline = store.get_or_create_share_tagline(profile_id)
+    if tagline is None:
+        raise HTTPException(status_code=404, detail="profile not found")
+    return {"tagline": tagline}
+
+
 @app.post("/api/profile", response_model=ProfileCreateResponse)
 async def create_profile(payload: ProfileCreateRequest) -> ProfileCreateResponse:
     profile_id, _ = store.create_or_get_profile(payload)

@@ -261,6 +261,8 @@ function LotteryContent() {
   const [result, setResult] = useState<LotteryResult | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [tagline, setTagline] = useState<string | null>(null);
+  const isShared = searchParams.get('shared') === '1';
 
   useEffect(() => {
     const profileId = searchParams.get('profile_id');
@@ -273,6 +275,10 @@ function LotteryContent() {
       .then((p) => {
         setProfile(p);
         setResult(generateNumbersFromProfile(profileId, p.elements));
+        fetch(`/api/share/${profileId}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => { if (data?.tagline) setTagline(data.tagline); })
+          .catch(() => {});
       })
       .catch(() => { router.replace('/'); })
       .finally(() => setProfileLoading(false));
@@ -349,13 +355,28 @@ function LotteryContent() {
                 ))}
               </div>
 
+              {tagline && (
+                <Card className={styles.explanationCard}>
+                  <p className={styles.explanationText} style={{ textAlign: 'center', fontStyle: 'italic' }}>
+                    {tagline}
+                  </p>
+                </Card>
+              )}
+
               <p className={styles.notice}>오늘의 번호입니다. 내일 다시 확인하면 새 번호를 뽑아드립니다.</p>
 
               <div className={styles.actions}>
-                {profile && <ShareButton numbers={result.comboA} profile={profile} />}
-                <Button variant="ghost" size="md" onClick={handleReset}>
-                  다시 입력
-                </Button>
+                {isShared && (
+                  <Button variant="primary" size="md" onClick={handleReset}>
+                    내 행운의 번호 뽑기 →
+                  </Button>
+                )}
+                {!isShared && profile && <ShareButton numbers={result.comboA} profile={profile} tagline={tagline} />}
+                {!isShared && (
+                  <Button variant="ghost" size="md" onClick={handleReset}>
+                    다시 입력
+                  </Button>
+                )}
               </div>
             </>
           );
