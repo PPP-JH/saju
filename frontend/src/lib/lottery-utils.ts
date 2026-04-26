@@ -1,3 +1,19 @@
+type ElementKey = 'wood' | 'fire' | 'earth' | 'metal' | 'water';
+
+export const OHAENG_TAGLINE: Record<ElementKey, string> = {
+  wood:  '창의적 에너지가 넘치는 이번 주 행운의 번호',
+  fire:  '열정이 빛나는 이번 주 행운의 번호',
+  earth: '안정적 기운의 이번 주 행운의 번호',
+  metal: '결단력이 강한 이번 주 행운의 번호',
+  water: '직관이 날카로운 이번 주 행운의 번호',
+};
+
+export function dominantElement(
+  elements: { wood: number; fire: number; earth: number; metal: number; water: number }
+): ElementKey {
+  return Object.entries(elements).sort((a, b) => b[1] - a[1])[0][0] as ElementKey;
+}
+
 // 오행 → 1~45 숫자 대응 (오행 고유 수리)
 export const ELEMENT_NUMBERS: Record<string, number[]> = {
   wood:  [3, 8, 13, 18, 23, 28, 33, 38, 43],

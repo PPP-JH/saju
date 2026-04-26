@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getProfile, type ProfileResponse } from '@/lib/api';
 import { ELEMENT_NUMBERS, ballColor, seededRandom } from '@/lib/lottery-utils';
+import { ShareButton } from '@/components/ShareButton';
 import styles from './page.module.css';
 
 // ── 오행 기본 데이터 ──────────────────────────────────────
@@ -258,7 +259,7 @@ function LotteryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [result, setResult] = useState<LotteryResult | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
@@ -269,8 +270,9 @@ function LotteryContent() {
     }
     setProfileLoading(true);
     getProfile(profileId)
-      .then((profile) => {
-        setResult(generateNumbersFromProfile(profileId, profile.elements));
+      .then((p) => {
+        setProfile(p);
+        setResult(generateNumbersFromProfile(profileId, p.elements));
       })
       .catch(() => { router.replace('/'); })
       .finally(() => setProfileLoading(false));
@@ -280,27 +282,6 @@ function LotteryContent() {
     router.push('/');
   };
 
-  const handleShare = async () => {
-    if (!result) return;
-    const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-    const text = [
-      `🎰 ${today} 사주 행운 번호`,
-      `${ELEMENT_NAMES[result.primaryElement]} ${ELEMENT_DESC[result.primaryElement]}`,
-      '',
-      `추천 조합: ${result.comboA.join(' · ')}`,
-      '',
-      'sajuhae.com/lottery 에서 내 번호 뽑기',
-    ].join('\n');
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try { await navigator.share({ text }); return; } catch { /* fallthrough */ }
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  };
 
   if (profileLoading) {
     return (
@@ -371,9 +352,7 @@ function LotteryContent() {
               <p className={styles.notice}>오늘의 번호입니다. 내일 다시 확인하면 새 번호를 뽑아드립니다.</p>
 
               <div className={styles.actions}>
-                <Button variant="secondary" size="md" onClick={handleShare}>
-                  {copied ? '복사됨!' : '공유하기'}
-                </Button>
+                {profile && <ShareButton numbers={result.comboA} profile={profile} />}
                 <Button variant="ghost" size="md" onClick={handleReset}>
                   다시 입력
                 </Button>
