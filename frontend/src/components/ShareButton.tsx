@@ -28,6 +28,13 @@ export function ShareButton({ numbers, profile, tagline }: Props) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // 이전 렌더에서 이미 초기화된 경우 (다시 입력 후 재방문 시)
+    if (window.Kakao?.isInitialized()) {
+      sdkReady.current = true;
+      return;
+    }
+
     if (document.getElementById('kakao-sdk')) return;
 
     const script = document.createElement('script');
@@ -35,10 +42,14 @@ export function ShareButton({ numbers, profile, tagline }: Props) {
     script.src = 'https://t1.kakaocdn.net/kakaojs/2.7.2/kakao.min.js';
     script.crossOrigin = 'anonymous';
     script.onload = () => {
-      if (!window.Kakao.isInitialized()) {
-        window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_APP_KEY!);
+      try {
+        if (!window.Kakao.isInitialized()) {
+          window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_APP_KEY!);
+        }
+        sdkReady.current = true;
+      } catch (e) {
+        console.error('Kakao init failed', e);
       }
-      sdkReady.current = true;
     };
     document.head.appendChild(script);
   }, []);
@@ -53,7 +64,8 @@ export function ShareButton({ numbers, profile, tagline }: Props) {
     const ogUrl = `${canonicalOrigin}/og?numbers=${numbers.join(',')}&element=${element}`;
     const shareUrl = `${canonicalOrigin}/lottery?profile_id=${profile.profile_id}&shared=1`;
 
-    if (sdkReady.current && window.Kakao?.Share) {
+    const kakaoReady = sdkReady.current || !!window.Kakao?.isInitialized();
+    if (kakaoReady && window.Kakao?.Share) {
       window.Kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
