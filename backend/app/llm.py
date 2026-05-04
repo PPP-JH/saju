@@ -73,16 +73,15 @@ class GeminiNarrator:
             "ten_gods_summary": profile.ten_gods_summary,
         }
         if feature_type == "share_tagline":
-            name_part = f"{profile.name}의 " if profile.name else ""
             dominant = max(profile.elements.model_dump().items(), key=lambda x: x[1])[0]
             element_ko = {"wood": "목(木)", "fire": "화(火)", "earth": "토(土)", "metal": "금(金)", "water": "수(水)"}.get(dominant, "")
             return (
                 "사주 기반 이번 주 행운 한줄 요약을 캐주얼하게 작성하세요.\n"
                 f"주 오행: {element_ko}\n"
                 f"사주 요약: {(profile.summary_text or '')[:80]}\n"
-                f"출력 형식: JSON 객체만. {{\"tagline\": \"한 문장\"}}\n"
+                "출력 형식: JSON 객체만. {\"tagline\": \"한 문장\"}\n"
                 "규칙:\n"
-                f"- {'\"' + name_part + '이번 주는...\" 형태로 시작' if profile.name else '\"이번 주는...\" 형태로 시작'}\n"
+                "- \"이번 주는...\" 형태로 시작\n"
                 "- '~예요', '~네요' 캐주얼 말투로 끝내기\n"
                 "- 20~30자 내외 짧은 한 문장\n"
                 "- 마크다운/코드펜스 금지, JSON만 출력\n"
@@ -294,6 +293,19 @@ class GeminiNarrator:
                         config=payload["config"],
                     )
                     text = response.text or ""
+                    if feature_type == "share_tagline":
+                        try:
+                            parsed = json.loads(self._extract_json_text(text))
+                            if isinstance(parsed.get("tagline"), str):
+                                return parsed
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                        logger.warning(
+                            "Gemini share_tagline response invalid: model=%s text=%s",
+                            model_name,
+                            text[:200],
+                        )
+                        continue
                     validated = self.parse_result_text(text)
                     if validated is not None:
                         return validated
